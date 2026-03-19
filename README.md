@@ -30,8 +30,8 @@ To evaluate the baseline model:
 - Evaluated baseline model's accuracy on both validation data and test data.
 
 Results:
-- Validation data: Overall Accuracy: 114/514 (22.2%); Parse Success Rate: 83.5%
-- Test data: Overall Accuracy: 226/1007 (22.4%); Parse success rate: 83.8%
+- Validation data: Overall Accuracy: 21.2%; Parse Success Rate: 83.5%
+- Test data: Overall Accuracy: 22.4%; Parse success rate: 83.8%
 
 Model's accuracy broken down by problem type (ordered in ascending order):
 | Problem Type | Accuracy |
@@ -91,6 +91,52 @@ The model does not know geometric mean theorem and tried to use Pythagorean theo
 The failure analysis above shows that the model needs to learn visual grounding and geometry theorems to improve its geometry problem solving ability. SFT is the best option. 
 
 ## Stage 2 SFT (Completed)
+To address the problems above, I have tried a few of different versions of SFT. The following four version use the same 1500 training examples samples from PGPS9K data. I also performed stratified sampling -- upsampling the problem types that the baseline model performed poorly at in stage 1. 
+### Version 1: Long Format SFT
+To generate training data, I asked Gemini 2.5 Pro to solve the 1500 problems using the following long format
+```
+<think>
+<facts>
+[F1]...
+[F2] ...
+</facts>
+<theorems>
+[T1] ...
+[T2] ...
+</theorems>
+<reasoning>
+step 1: [T1] ... [F1]
+step 2: [F2]
+step 3: [T2]
+</reasoning>
+</think>
+<answer></answer>
+```
+<facts> include the geometry facts provided by PGPS9K. <theorems> include the geometry theorems used to solve the problem. In the reasoning steps, I asked Gemini to cite facts and theorems and intervleave them in the reasoning.
+
+However, after training, the evaluation results on the validation data is only 9%, and the format compliance rate is only 53%. In terms of token length, the average token length of the model output is 3823, median is 888, the max token length is 7,826. Gemini 2.5 Pro's response  average length is 573, median 557, max token length 1068. Upon further investigation, the model's long response is due to outputting a long list of facts in the <facts> section (and a lot of them are incorrect) and not stopping on step 1, step 2,.... until it hits the max token limit. Also, the model did not learn to use facts and theorems in its reasoning.
+
+So this set up has a few drawbacks:
+- Gemini's response is too long, much more verbose than Qwen's natural reasoning
+- The visual facts is redundant: Qwen does not learn visual grounding from <facts>. Instead, it makes Qwen outputs a long list of visual facts, most of which are not correct.
+- Qwen is unable to cite facts and theorems: Qwen may not have enough memory to retain all the facts and theorems. When it's reasoning it casts its attention back the text it has generated, but due to its limited memory it fails to use the facts and theorems.
+- Step numbering causes loops in the reasoning: Qwen does not learn when to stop. It keeps outputting step 1, step 2, step 3....
+
+### Version 2: Concise Format SFT
+I asked Claude Sonnot to modify Gemini's response: remove <facts><theorems> and <reasoning> blocks. Instead, rewrite in the <think></think><answer></answer> format. Remove step numbering (step 1, step 2...) and replace [F] and [T] tags in the reasoning with the actual facts and theorems. I also asked Claude to write a more concise version of Gemini's response.
+
+After SFT, the accuracy on the validation data is 17.7%, and the format compliance rate is 82.5%. This is still below 21% accuracy of the baseline model. Below is a comparison between the baseline model and the checkpoint
+| Metric | Baseline | v3_nosteps merged |
+|---|---|---|
+| **Accuracy** | **21.0%** | 17.7% |
+| Answer extracted | 92.8% |82.5% |
+| Has `<think>` | 100.0% |100.0% |
+| Has `<answer>` | 93.0% | 82.7% |
+| Fact recall | 29.1% |27.5% |
+| Theorem recall | 9.9% | 12.2% |
+
+
+### Version 4: Multi-task SFT
 To address the failure patterns above, I used 1500 training examples and for each example, train the model on 3 tasks:
 - task 1 visual grounding: give the model geometry image, and prompt it to output a list of visual facts
 - task 2 reasoning: give the model the question text and a list of gold visual facts, prompt the model to output thinking steps and final answer in the \<think>step 1:..., step 2:...\</think>\<answer>...\</answer> format. The model should use the visual facts and apply relevant theorems.
@@ -161,25 +207,8 @@ Quartile analysis by problem complexity (number of facts, variables, structural 
 
 ### an alternative approach
 I also tried training the model in the following reponse format:
-```
-<think>
-<facts>
-[F1]...
-[F2] ...
-</facts>
-<theorems>
-[T1] ...
-[T2] ...
-</theorems>
-<reasoning>
-step 1: [T1] ... [F1]
-step 2: [F2]
-step 3: [T2]
-</reasoning>
-</think>
-<answer></answer>
-```
-But this is too much for a 3B model to handle. I tried this approach and the accuracy on validation data dropped to 9%, and the format compliance rate was only 53%. 
+
+
 
 
 ## Stage 3 GRPO (In Progress)
