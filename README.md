@@ -135,6 +135,7 @@ After SFT, the accuracy on the validation data is 17.7%, and the format complian
 | Fact recall | 29.1% |27.5% |
 | Theorem recall | 9.9% | 12.2% |
 
+
 | Metric | Baseline | Version 2|
 |---|---|---|
 | Min | 41 | 31 |
@@ -143,7 +144,7 @@ After SFT, the accuracy on the validation data is 17.7%, and the format complian
 | Median | 230 | 195 |
 
 
-### Version 4: Multi-task SFT
+### Version 3: Multi-task SFT
 To address the failure patterns above, I used 1500 training examples and for each example, train the model on 3 tasks:
 - task 1 visual grounding: give the model geometry image, and prompt it to output a list of visual facts
 - task 2 reasoning: give the model the question text and a list of gold visual facts, prompt the model to output thinking steps and final answer in the \<think>step 1:..., step 2:...\</think>\<answer>...\</answer> format. The model should use the visual facts and apply relevant theorems.
