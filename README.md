@@ -126,7 +126,7 @@ So this set up has a few drawbacks:
 I asked Claude Sonnot to modify Gemini's response: remove <facts><theorems> and <reasoning> blocks. Instead, rewrite in the <think></think><answer></answer> format. Remove step numbering (step 1, step 2...) and replace [F] and [T] tags in the reasoning with the actual facts and theorems. I also asked Claude to write a more concise version of Gemini's response.
 
 After SFT, the accuracy on the validation data is 17.7%, and the format compliance rate is 82.5%. This is still below 21% accuracy of the baseline model. Below is a comparison between the baseline model and the checkpoint
-| Metric | Baseline | v3_nosteps merged |
+| Metric | Baseline | Version 2 |
 |---|---|---|
 | **Accuracy** | **21.0%** | 17.7% |
 | Answer extracted | 92.8% |82.5% |
@@ -134,6 +134,13 @@ After SFT, the accuracy on the validation data is 17.7%, and the format complian
 | Has `<answer>` | 93.0% | 82.7% |
 | Fact recall | 29.1% |27.5% |
 | Theorem recall | 9.9% | 12.2% |
+
+| Metric | Baseline | Version 2|
+|---|---|---|
+| Min | 41 | 31 |
+| Max | 7,932 | 8,053 |
+| **Mean** | **338** | **1,362** |
+| Median | 230 | 195 |
 
 
 ### Version 4: Multi-task SFT
