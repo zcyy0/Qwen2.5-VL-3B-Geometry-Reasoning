@@ -143,80 +143,18 @@ After SFT, the accuracy on the validation data is 17.7%, and the format complian
 | **Mean** | **338** | **1,362** |
 | Median | 230 | 195 |
 
+The SFT model has lower fact recall than the baseline. It also suffers from degenerative reasoning loops. If I exclude the degenrative looping outputs, the SFT model has similar accuracy as the baseline model. So the problem is to teach the model to stop reasoning and output answer before it hits max token limit.
 
 ### Version 3: Multi-task SFT
-To address the failure patterns above, I used 1500 training examples and for each example, train the model on 3 tasks:
-- task 1 visual grounding: give the model geometry image, and prompt it to output a list of visual facts
-- task 2 reasoning: give the model the question text and a list of gold visual facts, prompt the model to output thinking steps and final answer in the \<think>step 1:..., step 2:...\</think>\<answer>...\</answer> format. The model should use the visual facts and apply relevant theorems.
+To address the limitations above, I also tried multi-task SFT:
+- task 1 visual grounding: give the model geometry image and a list of relevant and irrelevant facts, prompt the model to select the relevant facts
+- task 2 answer only: give the model the question and the geometry image, ask the model to output answer directly. The purpose is to teach the model to output <answer> tags
 - task 3 end-to-end: give the model the image and the question text, prompt the model to output thinking steps and final answer in the \<think>step 1:..., step 2:...\</think>\<answer>...\</answer> format. The model should output visual facts on its own and apply relevant theorems.
 
-The SFT ran for 2 epochs to avoid overfitting. Based on the analysis in stage 1, the model is weak on the problem types such as Angle Bisector of Triangle, Geometric Mean, Polygon Angle, Circle Chord, Secant Angle, Secant Segment, Tangent, and Inscribed Angle. I used stratified sampling to increase the ratio of these problem types in the SFT training data. 
-The loss curve and mean token accuracy shows the model is improving 
-![](./assets/sft_chart.png)
+The SFT model achieves similar accuracy as the baseline model. Although excluding the loop responses the accuracy is 22%. This is very close to 21% of the baseline model.
 
-The evaluation result on the validation dataset shows:
-### accuracy and format compliance:
-| Metric | Baseline | SFT (ckpt-564) | Delta |
-|---|:---:|:---:|:---:|
-| **Reasoning accuracy** | 23.6% (121/513) | 19.9% (102/513) | -3.7% |
-| **End-to-end accuracy** | 20.5% (105/513) | 18.1% (93/513) | -2.4% |
-| Reasoning format compliance | 0.0% | 83.2% | +83.2% |
-| Reasoning step numbering | 0.0% | 84.0% | +84.0% |
-| End-to-end format compliance | 0.0% | 86.4% | +86.4% |
-| End-to-end step numbering | 0.0% | 87.1% | +87.1% |
-
-### visual grounding
-| Metric | Baseline | SFT (ckpt-564) | Delta |
-|---|:---:|:---:|:---:|
-| Format compliance | 92.4% | 98.6% | +6.2% |
-| Avg facts predicted | 120.3 | 46.6 | (gold: 8.2) |
-| Facts within ±3 of gold | 276/513 (53.8%) | 437/513 (85.2%) | +31.4% |
-| Median output tokens | 146 | 72 | -50.7% |
-
-### output token length
-| Task | Baseline (median) | SFT (median) |
-|---|:---:|:---:|
-| Visual grounding | 146 | 72 |
-| Reasoning | 270 | 509 |
-| End-to-end | 239 | 445 |
-
-### analysis
-#### 1. SFT dramatically improves format compliance at the cost of accuracy
-
-The baseline model never produces the target structured format (`<think>Step 1:...Step 2:...</think><answer>...</answer>`), achieving 0% format compliance. The SFT checkpoint produces correctly formatted output ~84-87% of the time. However, this comes with a 2-4% accuracy drop across reasoning and end-to-end tasks.
-
-#### 2. Visual grounding is substantially better after SFT
-The baseline severely over-generates facts (mean 120 vs gold 8), often getting stuck in repetition loops that produce thousands of repeated tokens. The SFT model is much more calibrated (mean 47, median matching gold at 8), with 85% of predictions within ±3 of the gold fact count vs 54% for baseline.
-
-#### 3. The accuracy changes are not uniform — the two models have meaningful complementarity:
-**Reasoning task:**
-| | Baseline correct | Baseline wrong |
-|---|:---:|:---:|
-| **SFT correct** | 59 | 43 |
-| **SFT wrong** | 62 | 349 |
-
-**End-to-end task:**
-| | Baseline correct | Baseline wrong |
-|---|:---:|:---:|
-| **SFT correct** | 42 | 51 |
-| **SFT wrong** | 63 | 357 |
-
-#### 4. Accuracy changes are driven by response length, not problem complexity
-Quartile analysis by problem complexity (number of facts, variables, structural elements) showed no systematic trend where SFT performs better on more complex problems. Instead, the key predictor is **SFT response length**:
-
-| Category | SFT median tokens | SFT mean tokens |
-|---|:---:|:---:|
-| Problems SFT gained (43) | 417 | 504 |
-| Problems SFT lost (62) | 561 | 1,885 |
-| Baseline on lost problems | 257 | 276 |
-
-- When SFT produces a **short, focused response** (~400-500 tokens), it tends to reason correctly.
-- When SFT produces a **long response** (~1,800+ tokens), it often spirals into repetitive steps, contradictions, or hits the 8K token limit (8 of 62 lost problems).
-
-### an alternative approach
-I also tried training the model in the following reponse format:
-
-
+### SFT conclusion
+It seems SFT makes the model worse than the baseline model. Therefore, it's better to use the baseline model for GRPO.
 
 
 ## Stage 3 GRPO (In Progress)
