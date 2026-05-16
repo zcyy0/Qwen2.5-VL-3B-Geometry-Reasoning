@@ -5,32 +5,30 @@
 ![Tech](https://img.shields.io/badge/Stack-TRL_%7C_VLLM_%7C_LoRA-blue)
 
 ## 📌 Project Overview
-This project implements **Group Relative Policy Optimization (GRPO)** and **Supervised Finetuning** to enhance **visual geometry reasoning** in the **Qwen2.5-VL-3B-Instruct** model. 
+This project implements **Group Relative Policy Optimization (GRPO)**, **Supervised Finetuning** and **On Policy Distillation** and investigate if these methods can improve **visual geometry reasoning** in the **Qwen2.5-VL-3B-Instruct** model. 
 The training system leverages **HuggingFace TRL** for the RL loop and SFT, **LoRA** for parameter-efficient tuning, and **VLLM** for high-throughput generation during the exploration phase.
 
-**Target Benchmark:** [MathVista](https://mathvista.github.io/)  
 **Training Data:** [CASIA-PGPS9K](https://nlpr.ia.ac.cn/databases/CASIA-PGPS9K/index.html)
 
 ---
 ## Stage 0 Data Split and processing (Completed)
-CASIA-PGPS9K has 9,022 total problems with 30 different problem types. The biggest highlight of this dataset is it includes structural and semantic clauses, which are the extracted geometric properties from the images. This can be very helpful for improving model's visual grounding capability. Some questions share the same geometry images. To avoid data leakage, I used group-level split: all the questions that share the same image belong to the same split. At the same, I made sure the training, validation and test splits have similar ratios of problem types. The split result is:
+CASIA-PGPS9K has 9,022 total problems with 30 different problem types. The biggest highlight of this dataset is it includes structural and semantic clauses, which are the extracted geometric properties from the images. This can be very helpful for improving model's visual grounding capability. Some questions share the same geometry images. To avoid data leakage, I used group-level split: all the questions that share the same image belong to the same split. At the same time, I made sure the training, validation and test splits have similar ratios of problem types. The split result is:
 - Training data: 7,500 problems
 - Validation data: 513 problems 
 - Test data: 1,007 problems
 
 I also did additional data processing including the following:
 - Some of the original questions use latex expressions. These questions are converted to natural language questions
-- The structural and semantic clauses are written in a special annotation. I converted these clauses to functional annotation.
-- The ground truth answers in CASIA-PGPS9K are float numbers to three decimals. I wrote a util script that leverages latex2sympy2 library to compare decimal numbers v.s. fractional numbers and answers with symbols such as \sqrt, \pi etc.
+- The structural and semantic clauses are written in a special annotation. These clauses are converted to functional annotation.
+- The ground truth answers in CASIA-PGPS9K are float numbers to three decimals, but the model output answer can be a fractional number or contain symbols such as \sqrt, \pi etc. I wrote a util script that uses latex2sympy2 library to implement a fair comparison between the ground truth answer and the model answer.
 
 ## Stage 1 Baseline Evaluation (Completed)
 To evaluate the baseline model:
 - Prompt the model to output solution in \<think>...\</think>\<answer>...\</answer> format
-- Utilize  library for answer comparison
 - Evaluated baseline model's accuracy on both validation data and test data.
 
 Results:
-- Validation data: Overall Accuracy: 21.2%; Parse Success Rate: 83.5%
+- Validation data: Overall Accuracy: 22.1%; Parse Success Rate: 83.5%
 - Test data: Overall Accuracy: 22.4%; Parse success rate: 83.8%
 
 Model's accuracy broken down by problem type (ordered in ascending order):
@@ -67,7 +65,7 @@ Model's accuracy broken down by problem type (ordered in ascending order):
 | Angle| 39% |
 | Perimeter and Area of Triangle| 44% |
 
-By looking at individual problems that the model was wrong on, I have found  failure patterns:
+By looking at individual problems that the model was wrong on, I have found a few failure patterns:
 
 ### 1. Visual hallucination
 exampl question: BD bisects angle ABC. Find the measure of angle DBC.
