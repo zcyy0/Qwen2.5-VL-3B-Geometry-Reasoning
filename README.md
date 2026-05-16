@@ -1,4 +1,4 @@
-# 📐 Visual Geometry Reasoning using Qwen2.5-VL with GRPO and SFT
+# 📐 Visual Geometry Reasoning using Qwen2.5-VL
 
 ![Status](https://img.shields.io/badge/Status-Training_In_Progress-yellow)
 ![Model](https://img.shields.io/badge/Base_Model-Qwen_2.5_VL_3B-green)
