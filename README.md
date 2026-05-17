@@ -111,37 +111,8 @@ Based on the findings above, the biggest bottleneck identified is object-theorem
 
 ## Stage 2 SFT (Completed)
 To address the problems above, I have tried a few of different versions of SFT. The following four version use the same 1500 training examples samples from PGPS9K data. I also performed stratified sampling -- upsampling the problem types that the baseline model performed poorly at in stage 1. 
-### Version 1: Long Format SFT
-To generate training data, I asked Gemini 2.5 Pro to solve the 1500 problems using the following long format
-```
-<think>
-<facts>
-[F1]...
-[F2] ...
-</facts>
-<theorems>
-[T1] ...
-[T2] ...
-</theorems>
-<reasoning>
-step 1: [T1] ... [F1]
-step 2: [F2]
-step 3: [T2]
-</reasoning>
-</think>
-<answer></answer>
-```
-<facts> include the geometry facts provided by PGPS9K. <theorems> include the geometry theorems used to solve the problem. In the reasoning steps, I asked Gemini to cite facts and theorems and intervleave them in the reasoning.
 
-However, after training, the evaluation results on the validation data is only 9%, and the format compliance rate is only 53%. In terms of token length, the average token length of the model output is 3823, median is 888, the max token length is 7,826. Gemini 2.5 Pro's response  average length is 573, median 557, max token length 1068. Upon further investigation, the model's long response is due to outputting a long list of facts in the <facts> section (and a lot of them are incorrect) and not stopping on step 1, step 2,.... until it hits the max token limit. Also, the model did not learn to use facts and theorems in its reasoning.
-
-So this set up has a few drawbacks:
-- Gemini's response is too long, much more verbose than Qwen's natural reasoning
-- The visual facts is redundant: Qwen does not learn visual grounding from <facts>. Instead, it makes Qwen outputs a long list of visual facts, most of which are not correct.
-- Qwen is unable to cite facts and theorems: Qwen may not have enough memory to retain all the facts and theorems. When it's reasoning it casts its attention back the text it has generated, but due to its limited memory it fails to use the facts and theorems.
-- Step numbering causes loops in the reasoning: Qwen does not learn when to stop. It keeps outputting step 1, step 2, step 3....
-
-### Version 2: Concise Format SFT
+### Version 1: Teacher model's response
 I asked Claude Sonnot to modify Gemini's response: remove <facts><theorems> and <reasoning> blocks. Instead, rewrite in the <think></think><answer></answer> format. Remove step numbering (step 1, step 2...) and replace [F] and [T] tags in the reasoning with the actual facts and theorems. I also asked Claude to write a more concise version of Gemini's response.
 
 After SFT, the accuracy on the validation data is 17.7%, and the format compliance rate is 82.5%. This is still below 21% accuracy of the baseline model. Below is a comparison between the baseline model and the checkpoint
@@ -164,20 +135,19 @@ After SFT, the accuracy on the validation data is 17.7%, and the format complian
 
 The SFT model has lower fact recall than the baseline. It also suffers from degenerative reasoning loops. If I exclude the degenrative looping outputs, the SFT model has similar accuracy as the baseline model. So the problem is to teach the model to stop reasoning and output answer before it hits max token limit.
 
-### Version 3: Multi-task SFT
-To address the limitations above, I also tried multi-task SFT:
-- task 1 visual grounding: give the model geometry image and a list of relevant and irrelevant facts, prompt the model to select the relevant facts
-- task 2 answer only: give the model the question and the geometry image, ask the model to output answer directly. The purpose is to teach the model to output <answer> tags
-- task 3 end-to-end: give the model the image and the question text, prompt the model to output thinking steps and final answer in the \<think>step 1:..., step 2:...\</think>\<answer>...\</answer> format. The model should output visual facts on its own and apply relevant theorems.
+### Version 2: Teacher correcting student's response
 
-The SFT model achieves similar accuracy as the baseline model. Although excluding the loop responses the accuracy is 22%. This is very close to 21% of the baseline model.
+### Version 3: Rejection-Sampling Fine-tuning 
+
+### Verstion 4: Hint-Augmented Rejection-Sampling Fine-tuning
 
 ### SFT conclusion
-It seems SFT makes the model worse than the baseline model. Therefore, it's better to use the baseline model for GRPO.
+None of the SFT methods above improved the model, so for GRPO, I decided to use the baseline model. 
 
 
 ## Stage 3 GRPO (In Progress)
 reward function design: 
 
-## Stage 4 Benchmark Evaluation
+## Stage 4 On-Policy Distillation
+
 
