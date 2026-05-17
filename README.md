@@ -104,7 +104,10 @@ The results are summarized in the chart below:
 | Question + Relevant visual facts| 31.1% |
 | Question + Relevant visual facts + Relevant theorems | 39.1% |
 | Question + Relevant visual facts + Relevant theorems + Object-theoream Bindings | 69.1% |
+| Question + + Relevant theorems + Object-theoream Bindings | 49.4% |
 | Question + + Relevant theorems + Object-theoream Bindings | 50% |
+
+Based on the findings above, the biggest bottleneck identified is object-theorem binding. And the next bottleneck is extracting useful visual facts from the diagram.
 
 ## Stage 2 SFT (Completed)
 To address the problems above, I have tried a few of different versions of SFT. The following four version use the same 1500 training examples samples from PGPS9K data. I also performed stratified sampling -- upsampling the problem types that the baseline model performed poorly at in stage 1. 
