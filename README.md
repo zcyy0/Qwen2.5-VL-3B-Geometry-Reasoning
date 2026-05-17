@@ -138,14 +138,22 @@ Based on the analysis from Version 1, I let the Qwen model write the response fi
 Based on Version 1 and Version 2, the Qwen model does not learn well from teacher generated responses. So I tried to ask the model to generate the responses itself, and kept the correct ones, and SFT using the data. This increased the accuracy on the validation dataset by 1%. 
 
 ### Verstion 4: Hint-Augmented Rejection-Sampling Fine-tuning
-Version 3 has its limitations, it only reinforced the model's correct responses, but if the model does not have the object-theorem binding capability, it will not surface. Another idea I tried based on Version 3 is to inject the object-theorem binding in the prompt, and ask the model to generate reasoning response that explicitly mentions the object-theorem binding, and select the correct responses, and SFT using these responses. However, the accuracy on the validation data is 20.6%, below the baseline. 
+Version 3 has its limitations, it only reinforced the model's correct responses, but if the model does not have the object-theorem binding capability, it will not surface. Another idea I tried based on Version 3 is to inject the object-theorem binding in the prompt, and ask the model to generate reasoning response that explicitly mentions the object-theorem binding, and select the correct responses, and SFT using these responses. However, the accuracy on the validation data is 22.4%, very close to the baseline model. 
 
 ### SFT conclusion
 None of the SFT methods above improved the model, so for GRPO, I decided to use the baseline model. 
 
-
 ## Stage 3 GRPO (Completed)
-reward function design: 
+GRPO set up
+- Curriculum learning: Ask the baseline model to generate 4 rollouts per problem with temperature=0.6. If there are 3 or 4 correct rollouts, classify the problem as easy; if there are 1 to 2 correct rollouts, classify the problem as medium; if there are 0 correct rollouts, classify the problem as hard. The training is divided into 3 stages: easy -> medium -> hard. I further divided the hard problems into stage 3A and stage 3B. Let the model generate 8 rollouts per hard problem,
+- One epoch each stage: After running for more than one epoch, the reward and accuracy did not increase.
+- Learning rate: 1e-5
+- LoRA: LLM + Vision MLP + Projector
+- Beta: Stage 1: 0.02. Stage 2: 0.01. Stage 3: 0.005
+
+Reward design variants
+1. Answer + Format: reward + 1.0 if answer is correct; reward + 0.1 if strict format is in the output
+2. 
 
 ## Stage 4 On-Policy Distillation (In Progress)
 
