@@ -110,20 +110,16 @@ The results are summarized in the chart below:
 Based on the findings above, the biggest bottleneck identified is object-theorem binding. And the next bottleneck is extracting useful visual facts from the diagram.
 
 ## Stage 2 SFT (Completed)
-To address the problems above, I have tried a few of different versions of SFT. The following four version use the same 1500 training examples samples from PGPS9K data. I also performed stratified sampling -- upsampling the problem types that the baseline model performed poorly at in stage 1. 
+To address the problems above, I have tried a few of different versions of SFT. The following versions use the same 1500 training examples samples from PGPS9K data. I also performed stratified sampling -- upsampling the problem types that the baseline model performed poorly at in stage 1. 
 
 ### Version 1: Teacher model's response
-I asked Claude Sonnot to modify Gemini's response: remove <facts><theorems> and <reasoning> blocks. Instead, rewrite in the <think></think><answer></answer> format. Remove step numbering (step 1, step 2...) and replace [F] and [T] tags in the reasoning with the actual facts and theorems. I also asked Claude to write a more concise version of Gemini's response.
-
-After SFT, the accuracy on the validation data is 17.7%, and the format compliance rate is 82.5%. This is still below 21% accuracy of the baseline model. Below is a comparison between the baseline model and the checkpoint
-| Metric | Baseline | Version 2 |
+I used Gemini 2.5 Pro to write solutions for the problems and explicitly mentioned visual facts and relevant theorems in the solution. However, Gemini 2.5 Pro's response was too verbose, and SFT using these responses caused severe degeneration in the model's output. I then asked Claude Sonnet to re-write the responses to be more concise but still maintained the key visual facts and theorems. After SFT, the accuracy on the validation data is 17.7%, and the format compliance rate is 82.5%. This is still below 21% accuracy of the baseline model. Below is a comparison between the baseline model and the checkpoint
+| Metric | Baseline | Version 1 |
 |---|---|---|
-| **Accuracy** | **21.0%** | 17.7% |
+| **Accuracy** | **22.1%** | 17.7% |
 | Answer extracted | 92.8% |82.5% |
 | Has `<think>` | 100.0% |100.0% |
 | Has `<answer>` | 93.0% | 82.7% |
-| Fact recall | 29.1% |27.5% |
-| Theorem recall | 9.9% | 12.2% |
 
 
 | Metric | Baseline | Version 2|
@@ -133,21 +129,24 @@ After SFT, the accuracy on the validation data is 17.7%, and the format complian
 | **Mean** | **338** | **1,362** |
 | Median | 230 | 195 |
 
-The SFT model has lower fact recall than the baseline. It also suffers from degenerative reasoning loops. If I exclude the degenrative looping outputs, the SFT model has similar accuracy as the baseline model. So the problem is to teach the model to stop reasoning and output answer before it hits max token limit.
+The model suffers from degenerative reasoning loops. The possible reason is the distribution of the teacher model's response tokens are very different from Qwen 2.5 VL model, and SFT causes a shift in model's output distribution. 
 
 ### Version 2: Teacher correcting student's response
+Based on the analysis from Version 1, I let the Qwen model write the response first, and then asked Claude Sonnet to correct the response. The goal is to maintain the style of the model's original response but at the same correct key errors in the reasoning. However, this method did not improve the model's accuracy at all. Upon further investigation, the beginning 1-2 sentences are usually fine, but Claude Sonnet began to make big corrections in the rest of the reasoning, and this still caused changes that are very different from the model's original style. 
 
-### Version 3: Rejection-Sampling Fine-tuning 
+### Version 3: Rejection-Sampling Fine-tuning
+Based on Version 1 and Version 2, the Qwen model does not learn well from teacher generated responses. So I tried to ask the model to generate the responses itself, and kept the correct ones, and SFT using the data. This increased the accuracy on the validation dataset by 1%. 
 
 ### Verstion 4: Hint-Augmented Rejection-Sampling Fine-tuning
+Version 3 has its limitations, it only reinforced the model's correct responses, but if the model does not have the object-theorem binding capability, it will not surface. Another idea I tried based on Version 3 is to inject the object-theorem binding in the prompt, and ask the model to generate reasoning response that explicitly mentions the object-theorem binding, and select the correct responses, and SFT using these responses. However, the accuracy on the validation data is 20.6%, below the baseline. 
 
 ### SFT conclusion
 None of the SFT methods above improved the model, so for GRPO, I decided to use the baseline model. 
 
 
-## Stage 3 GRPO (In Progress)
+## Stage 3 GRPO (Completed)
 reward function design: 
 
-## Stage 4 On-Policy Distillation
+## Stage 4 On-Policy Distillation (In Progress)
 
 
