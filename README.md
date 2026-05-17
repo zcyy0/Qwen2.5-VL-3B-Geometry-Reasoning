@@ -94,7 +94,16 @@ To quantify the failure pattern, I have tried the following ablations by varying
 3. I asked a more capable model (Gemini 2.5 Pro) to list the relevant theorems for the problems, and based on 2, added the theorems to the prompt, the model's evaluation accuracy increased to 39.1%. To confirm that the increase in accuracy is due to relevant theorems, not longer prompt, I injected random theorems into the prompt, and the accuracy dropped back to 31.7%
 4. By inspecting the failure responses in 3, I found that the model failed to bind objects to the relevant theorems. For example, the model knows Pythagorean Theorem and that a^2 + b^2 = c^2, but it fails to identify the correct sides in the diagram to establish the equation. To verify that this is a bottleneck, I asked a more capable model (Gemini 2.5 Pro) to write object-theorem bindings for the problems, and injected these bindings in the prompt. Based on 3, the accuracy went up to 69.1%.
 5. Based on 4, I removed relevant visual facts from the prompt, so the prompt only contained question text + relevant theorems + object-theorem bindings, and the acurracy dropped back to 50%. 
-6. By inspecting the failure responses from 4, the remaining 30% incorrect responses are due to loop responses, incorrect arithetic operations. 
+6. By inspecting the failure responses from 4, the remaining 30% incorrect responses are due to loop responses, incorrect arithetic operations.
+The results are summarized in the chart below
+| Prompt | Accuracy on validation dataset |
+|---|---|
+| Question + Image | 21.2% |
+| Question + Image + Relevant visual facts | 30.4% |
+| Question + Relevant visual facts| 31.1% |
+| Question + Relevant visual facts + Relevant theorems | 39.1% |
+| Question + Relevant visual facts + Relevant theorems + Object-theoream Bindings | 69.1% |
+| Question + + Relevant theorems + Object-theoream Bindings | 50% |
 
 ## Stage 2 SFT (Completed)
 To address the problems above, I have tried a few of different versions of SFT. The following four version use the same 1500 training examples samples from PGPS9K data. I also performed stratified sampling -- upsampling the problem types that the baseline model performed poorly at in stage 1. 
