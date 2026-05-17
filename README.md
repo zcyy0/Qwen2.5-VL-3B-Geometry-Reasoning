@@ -24,7 +24,7 @@ I also did additional data processing including the following:
 
 ## Stage 1 Baseline Evaluation (Completed)
 To evaluate the baseline model:
-- Prompt the model to output solution in \<think>...\</think>\<answer>...\</answer> format
+- Give the model the question text and image, and prompt the model to output solution in \<think>...\</think>\<answer>...\</answer> format
 - Evaluated baseline model's accuracy on both validation data and test data.
 
 Results:
@@ -87,6 +87,14 @@ example question: In triangle PQR, PS=8, QS=14. Find RS.
 The model does not know geometric mean theorem and tried to use Pythagorean theorem to solve the question, and got the wrong answer
 
 The failure analysis above shows that the model needs to learn visual grounding and geometry theorems to improve its geometry problem solving ability. SFT is the best option. 
+
+To quantify the failure pattern, I have tried the following ablations by varying the prompt:
+1. I asked a more capable model to output relevant visual facts in the diagram that help with problem solving, and add these relevant visual facts in the prompt when evaluating the baseline model. The evaluation accuracy on the validation dataset went up from 22% to 30.4%
+2. I removed the image, and only provided the model with the question and relevant visual fact texts, and the model's evaluation accuracy is 31.1%, close to the first case
+3. I asked a more capable model (Gemini 2.5 Pro) to list the relevant theorems for the problems, and based on 2, added the theorems to the prompt, the model's evaluation accuracy increased to 39.1%. To confirm that the increase in accuracy is due to relevant theorems, not longer prompt, I injected random theorems into the prompt, and the accuracy dropped back to 31.7%
+4. By inspecting the failure responses in 3, I found that the model failed to bind objects to the relevant theorems. For example, the model knows Pythagorean Theorem and that a^2 + b^2 = c^2, but it fails to identify the correct sides in the diagram to establish the equation. To verify that this is a bottleneck, I asked a more capable model (Gemini 2.5 Pro) to write object-theorem bindings for the problems, and injected these bindings in the prompt. Based on 3, the accuracy went up to 69.1%.
+5. Based on 4, I removed relevant visual facts from the prompt, so the prompt only contained question text + relevant theorems + object-theorem bindings, and the acurracy dropped back to 50%. 
+6. By inspecting the failure responses from 4, the remaining 30% incorrect responses are due to loop responses, incorrect arithetic operations. 
 
 ## Stage 2 SFT (Completed)
 To address the problems above, I have tried a few of different versions of SFT. The following four version use the same 1500 training examples samples from PGPS9K data. I also performed stratified sampling -- upsampling the problem types that the baseline model performed poorly at in stage 1. 
