@@ -167,7 +167,7 @@ Evaluation at each stage
 | Stage 3A|27.2%|
 | Stage 3B|27.2%|
 
-The best checkpoint is from Stage 3A. The evaluation accuracy on the test data is 26.8%.
+The best checkpoint is from Stage 3A. The evaluation accuracy on the test data is 28.9% compared to the baseline model's 22.4%.
 
 ## Stage 4 On-Policy Distillation (In Progress)
 
