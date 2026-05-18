@@ -28,7 +28,7 @@ To evaluate the baseline model:
 - Evaluated baseline model's accuracy on both validation data and test data.
 
 Results:
-- Validation data: Overall Accuracy: 22.1%; Parse Success Rate: 83.5%
+- Validation data: Overall Accuracy: 22.2%; Parse Success Rate: 83.5%
 - Test data: Overall Accuracy: 22.4%; Parse success rate: 83.8%
 
 Model's accuracy broken down by problem type (ordered in ascending order):
@@ -99,7 +99,7 @@ The results are summarized in the chart below:
 
 | Prompt | Accuracy on validation dataset |
 |---|---|
-| Question + Image | 21.2% |
+| Question + Image | 22.2% |
 | Question + Image + Relevant visual facts | 30.4% |
 | Question + Relevant visual facts| 31.1% |
 | Question + Relevant visual facts + Relevant theorems | 39.1% |
@@ -116,7 +116,7 @@ To address the problems above, I have tried a few of different versions of SFT. 
 I used Gemini 2.5 Pro to write solutions for the problems and explicitly mentioned visual facts and relevant theorems in the solution. However, Gemini 2.5 Pro's response was too verbose, and SFT using these responses caused severe degeneration in the model's output. I then asked Claude Sonnet to re-write the responses to be more concise but still maintained the key visual facts and theorems. After SFT, the accuracy on the validation data is 17.7%, and the format compliance rate is 82.5%. This is still below 21% accuracy of the baseline model. Below is a comparison between the baseline model and the checkpoint
 | Metric | Baseline | Version 1 |
 |---|---|---|
-| **Accuracy** | 22.1% | 17.7% |
+| **Accuracy** | 22.2% | 17.7% |
 | Answer extracted | 92.8% |82.5% |
 | Has `<think>` | 100.0% |100.0% |
 | Has `<answer>` | 93.0% | 82.7% |
@@ -142,6 +142,7 @@ None of the SFT methods above improved the model, so for GRPO, I decided to use 
 ## Stage 3 GRPO (Completed)
 ### GRPO set up
 - Curriculum learning: Ask the baseline model to generate 4 rollouts per problem with temperature=0.6. If there are 3 or 4 correct rollouts, classify the problem as easy; if there are 1 to 2 correct rollouts, classify the problem as medium; if there are 0 correct rollouts, classify the problem as hard. The training is divided into 3 stages: 1 easy -> 2 medium -> 3 hard. I further divided the hard problems into stage 3A and stage 3B. Let the model generate 8 rollouts per hard problem, if there's at least 1 correct rollout, the problem belongs to stage 3A. If there is zero correct rollouts, the problems belongs to stage 3B. 
+- Number of rollouts K = 8
 - One epoch each stage: After running for more than one epoch, the reward and accuracy did not increase.
 - Learning rate: 1e-5
 - LoRA: LLM + Vision MLP + Projector
@@ -154,6 +155,14 @@ None of the SFT methods above improved the model, so for GRPO, I decided to use 
 4. Stage 3B: Answer + Format + Theorem + Facts + length penalty. Reward = 1.0 * answer_correct + w_1 * visual_facts_coverage + w_2 * theorem_coverage - 0.2 * loop_or_too_long
 
 ### Training analysis in each stage
+For each stage, I use Weights and Bias to track the reward mean, reward standard deviation, loss, KL, entropy. I also tracked two metrics: gen_prompt_correct and gen_overall_correct. Gen_prompt_correct computes the percentage of problems the model has at least one correct
+rollout for; gen_overall_correct computes the percentage of model's correct rollouts. 
+
+Stage 1
+gen_prompt_correct stay between 95% and 100% over the training. gen_overall_correct increased from 40% to 60%.
+| Reward mean | Reward std | Loss |
+| :---: | :---: | :---: |
+| ![](./assets/stage_1_mean_reward.png) | ![](./assets/stage_1_reward_std.png) | ![](./assets/stage_1_loss.png) |
 
 ### Evaluation at each stage
 | Stage | Accuracy on Validation data |
