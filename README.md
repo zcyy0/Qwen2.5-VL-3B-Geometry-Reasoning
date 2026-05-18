@@ -161,7 +161,7 @@ rollout for; gen_overall_correct computes the percentage of model's correct roll
 Stage 1
 gen_prompt_correct stay between 95% and 100% over the training. gen_overall_correct increased from 40% to 60%.
 | Reward mean | Reward std |
-| :---: | :---: | :---: |
+| :---: | :---: |
 | ![](./assets/stage_1_mean_reward.png) | ![](./assets/stage_1_reward_std.png) | 
 
 | KL| Entropy | Loss |
