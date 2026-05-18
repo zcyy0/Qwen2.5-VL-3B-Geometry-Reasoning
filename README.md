@@ -164,6 +164,10 @@ gen_prompt_correct stay between 95% and 100% over the training. gen_overall_corr
 | :---: | :---: | :---: |
 | ![](./assets/stage_1_mean_reward.png) | ![](./assets/stage_1_reward_std.png) | ![](./assets/stage_1_loss.png) |
 
+| KL| Entropy |
+| :---: | :---: |
+| ![](./assets/stage_1_kl.png) | ![](./assets/stage_1_entropy.png) |
+
 ### Evaluation at each stage
 | Stage | Accuracy on Validation data |
 |---|---|
