@@ -159,7 +159,7 @@ For each stage, I use Weights and Bias to track the reward mean, reward standard
 rollout for; gen_overall_correct computes the percentage of model's correct rollouts. 
 
 Stage 1
-gen_prompt_correct stay between 95% and 100% over the training. gen_overall_correct increased from 40% to 60%.
+gen_prompt_correct stay between 95% and 100% over the training. gen_overall_correct increased from 40% range to 60% range.
 | Reward mean | Reward std |
 | :---: | :---: |
 | ![](./assets/stage_1_mean_reward.png) | ![](./assets/stage_1_reward_std.png) | 
@@ -168,11 +168,25 @@ gen_prompt_correct stay between 95% and 100% over the training. gen_overall_corr
 | :---: | :---: |:---: |
 | ![](./assets/stage_1_kl.png) | ![](./assets/stage_1_entropy.png) |![](./assets/stage_1_loss.png) |
 
+Stage 2
+gen_prompt_correct stay between 80% and 90%. gen_overall_correct increased from 29-33% to 35-40% range
+| Reward mean | Reward std |
+| :---: | :---: |
+| ![](./assets/stage_2_mean_reward.png) | ![](./assets/stage_2_reward_std.png) | 
+
+| KL| Entropy | Loss |
+| :---: | :---: |:---: |
+| ![](./assets/stage_2_kl.png) | ![](./assets/stage_2_entropy.png) |![](./assets/stage_2_loss.png) |
+
+Stage 3A
+gen_prompt_correct and gen_overall_correct do not show clear improvement
+
+
 ### Evaluation at each stage
 | Stage | Accuracy on Validation data |
 |---|---|
 | Stage 1 | 23%|
-| Stage 2| 26.1%|
+| Stage 2| 26.5%|
 | Stage 3A|27.2%|
 | Stage 3B|27.2%|
 
