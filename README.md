@@ -116,18 +116,14 @@ To address the problems above, I have tried a few of different versions of SFT. 
 I used Gemini 2.5 Pro to write solutions for the problems and explicitly mentioned visual facts and relevant theorems in the solution. However, Gemini 2.5 Pro's response was too verbose, and SFT using these responses caused severe degeneration in the model's output. I then asked Claude Sonnet to re-write the responses to be more concise but still maintained the key visual facts and theorems. After SFT, the accuracy on the validation data is 17.7%, and the format compliance rate is 82.5%. This is still below 21% accuracy of the baseline model. Below is a comparison between the baseline model and the checkpoint
 | Metric | Baseline | Version 1 |
 |---|---|---|
-| **Accuracy** | **22.1%** | 17.7% |
+| **Accuracy** | 22.1% | 17.7% |
 | Answer extracted | 92.8% |82.5% |
 | Has `<think>` | 100.0% |100.0% |
 | Has `<answer>` | 93.0% | 82.7% |
-
-
-| Metric | Baseline | Version 2|
-|---|---|---|
-| Min | 41 | 31 |
-| Max | 7,932 | 8,053 |
-| **Mean** | **338** | **1,362** |
-| Median | 230 | 195 |
+| Min token length | 41 | 31 |
+| Max token length | 7,932 | 8,053 |
+| Mean token length | 338 | 1,362 |
+| Median token length | 230 | 195 |
 
 The model suffers from degenerative reasoning loops. The possible reason is the distribution of the teacher model's response tokens are very different from Qwen 2.5 VL model, and SFT causes a shift in model's output distribution. 
 
