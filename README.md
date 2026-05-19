@@ -212,6 +212,11 @@ gen_prompt_correct and gen_overall_correct do not show clear improvement. The tr
 
 The improved accuracy from Stage 2 to Stage 3A is likely noise, so I picked the best checkpoint from Stage 3A. The evaluation accuracy on the test data is 28.9% compared to the baseline model's 22.4%.
 
+### GRPO Analysis
+I sampled 500 problems from stage 3A training data. The model's pass@8 on the sample is 65%, and its pass@16 is around 82%. I ran two versions of stage 3A one using k=8 and the other using k=16. However, the accuracy of the k=16 run is not higher than the k=8 run. Although the model clearly has some latent ability and can find correct solutions in its sampling tail, but GRPO is not effectively moving those solutions into the default high-probability behavior. I compared the problem types in the validation data the k=8 checkpoint and k=16 checkpoints solved respectively, and found that k=16 improved some problems types but regressed on other types. That looks like strategy shifting, not uniform improvement. The k=16 checkpoint may have become better at certain theorem families while forgetting or destabilizing others. So the overall average barely moves. The training reinforces whatever wins in the sampled rollouts, but it does not necessarily preserve broad geometry competence.
+
+
+
 ## Stage 4 On-Policy Distillation (In Progress)
 
 
