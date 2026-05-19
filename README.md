@@ -180,6 +180,13 @@ gen_prompt_correct stay between 80% and 90%. gen_overall_correct increased from 
 
 Stage 3A
 gen_prompt_correct and gen_overall_correct do not show clear improvement
+| Reward mean | Reward std |
+| :---: | :---: |
+| ![](./assets/stage_3_mean_reward.png) | ![](./assets/stage_3_reward_std.png) | 
+
+| KL| Entropy | Loss |
+| :---: | :---: |:---: |
+| ![](./assets/stage_3_kl.png) | ![](./assets/stage_3_entropy.png) |![](./assets/stage_3_loss.png) |
 
 
 ### Evaluation at each stage
