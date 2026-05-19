@@ -182,11 +182,11 @@ Stage 3A
 gen_prompt_correct and gen_overall_correct do not show clear improvement
 | Reward mean | Reward std |
 | :---: | :---: |
-| ![](./assets/stage_3_mean_reward.png) | ![](./assets/stage_3_reward_std.png) | 
+| ![](./assets/stage_3a_mean_reward.png) | ![](./assets/stage_3a_reward_std.png) | 
 
 | KL| Entropy | Loss |
 | :---: | :---: |:---: |
-| ![](./assets/stage_3_kl.png) | ![](./assets/stage_3_entropy.png) |![](./assets/stage_3_loss.png) |
+| ![](./assets/stage_3a_kl.png) | ![](./assets/stage_3a_entropy.png) |![](./assets/stage_3a_loss.png) |
 
 
 ### Evaluation at each stage
