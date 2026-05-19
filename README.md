@@ -193,6 +193,15 @@ gen_prompt_correct and gen_overall_correct do not show clear improvement
 
 Stage 3B
 
+gen_prompt_correct and gen_overall_correct do not show clear improvement. The training dynamics does not show clear learning. 
+| Reward mean | Reward std |
+| :---: | :---: |
+| ![](./assets/stage_3b_mean_reward.png) | ![](./assets/stage_3b_reward_std.png) | 
+
+| KL| Entropy | Loss |
+| :---: | :---: |:---: |
+| ![](./assets/stage_3b_kl.png) | ![](./assets/stage_3b_entropy.png) |![](./assets/stage_3b_loss.png) |
+
 ### Evaluation at each stage
 | Stage | Accuracy on Validation data |
 |---|---|
