@@ -82,7 +82,28 @@ The evaluation pipeline is:
 extract_answer → parse_numeric → check_answer
 ```
 
-1. extract_answer: The evaluator extracts the substring inside the first valid <answer>...</answer> block. Anything outside the first <answer> block is ignored. The following cases are counted as wrong:
+1. extract_answer: The evaluator extracts the substring inside the first valid <answer>...</answer> block. Anything outside the first <answer> block is ignored.
+2. parse_numeric: The parser reduces many model output formats to floats, including:
+```
+\frac{1}{2}
+\sqrt{3}
+2\pi
+3 + \sqrt{5}
+30°
+2.5 cm
+x = 7
+≈ 12.6
+```
+If the parser extracts multiple comma-separated values, such as:
+```
+x = 4, y = 7
+```
+the prediction is counted correct if any extracted value matches the gold answer within tolerance.
+
+3. check_answer
+The answer is considered correct if ∣pred−gold∣<0.01.
+
+4. The following cases are counted as wrong:
 ```
 No <answer> tag
 Unclosed <answer> tag
