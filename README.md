@@ -154,9 +154,18 @@ The baseline model has very uneven performance across geometry types. Some theor
 | Perimeter and Area of Quadrangle| 40.7% |11/27|
 
 ## Baseline Failure Analysis
+#### Visual Hallucination
+Example question:
+> BD bisects angle ABC. Find the measure of angle DBC.
+> ![](./assets/prob_3490.png)
+The model correctly identifies expressions such as 2x+7 and 4x−9, but hallucinates a triangle relation that is not present in the diagram. It states:
+> “The sum of angles in a triangle is 180 degrees. Therefore, angle ABD + angle CBD + angle DBC = 180.”
+This suggests the model sometimes recognizes local visual text but fails to ground the overall geometric structure.
+
+#### Geometry Relationship Confusion
 Example question:
 >VWXY is a rhombus. Find angle WXY if angle WVY = 4b + 10 and angle XZW = 10b - 5.
-![](./assets/prob_3490.png)
+>![](./assets/prob_7718.png)
 
 The model recognizes relevant properties of a rhombus:
 ```
@@ -187,7 +196,7 @@ The model correctly identifies 2x+7 and 4x-9 in the image, but hallucinate that 
 
 ### 2. Geometry relationship confusion
 example question: VWXY is a rhombus. Find angle WXY if angle WVY = 4b+10 and angle XZW = 10b-5
-![](./assets/prob_7718.png)
+
 
 The model correctly recognizes that "because VWXY is a rhombus, all sides are equal" and "The diagonals of a rhombus bisect each other at right angles", but it incorrectly identifies the relationship between angles. It states "angle WVY and angle XZW are complementary angles"
 
