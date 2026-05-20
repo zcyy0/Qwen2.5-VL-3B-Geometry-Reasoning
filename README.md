@@ -63,6 +63,37 @@ I performed several preprocessing steps:
 
 
 ## Evaluation Protocol
+All reported main accuracy numbers are accuracy@1.
+
+Evaluation uses:
+```
+Input: image + question only
+Output format: <think>...</think><answer>...</answer>
+Decoding: greedy
+Seed: fixed, SamplingParams(seed=42)
+```
+No visual facts, theorem labels, object-theorem bindings, or PGPS9K clauses are included in the evaluation prompt.
+
+Evaluation and training use the same base prompt format.
+
+### Answer Extraction and Checking
+The evaluation pipeline is:
+```
+extract_answer → parse_numeric → check_answer
+```
+
+1. extract_answer: The evaluator extracts the substring inside the first valid <answer>...</answer> block. Anything outside the first <answer> block is ignored. The following cases are counted as wrong:
+```
+No <answer> tag
+Unclosed <answer> tag
+No parseable answer inside <answer>
+Parsed answer differs from gold by ≥ 0.01
+```
+
+
+   
+
+
 To evaluate the baseline model:
 - Give the model the question text and image, and prompt the model to output solution in \<think>...\</think>\<answer>...\</answer> format
 - Evaluated baseline model's accuracy on both validation data and test data.
