@@ -4,11 +4,29 @@
 ![Model](https://img.shields.io/badge/Base_Model-Qwen_2.5_VL_3B-green)
 ![Tech](https://img.shields.io/badge/Stack-TRL_%7C_VLLM_%7C_LoRA-blue)
 
-## 📌 Project Overview
-This project implements **Group Relative Policy Optimization (GRPO)**, **Supervised Finetuning** and **On Policy Distillation** and investigate if these methods can improve **visual geometry reasoning** in the **Qwen2.5-VL-3B-Instruct** model. 
-The training system leverages **HuggingFace TRL** for the RL loop and SFT, **LoRA** for parameter-efficient tuning, and **VLLM** for high-throughput generation during the exploration phase.
+## 📌 Project Summary
+This project investigates whether supervised fine-tuning and GRPO can improve visual geometry reasoning in Qwen2.5-VL-3B-Instruct on the [CASIA-PGPS9K](https://nlpr.ia.ac.cn/databases/CASIA-PGPS9K/index.html) geometry benchmark.
+I built a full training and evaluation pipeline using:
 
-**Training Data:** [CASIA-PGPS9K](https://nlpr.ia.ac.cn/databases/CASIA-PGPS9K/index.html)
+- Hugging Face TRL for SFT and GRPO training
+- LoRA for parameter-efficient fine-tuning
+- vLLM for high-throughput rollout generation
+- A symbolic answer parser for robust comparison between model outputs and numeric ground-truth answers
+- A curriculum-based GRPO setup that separates problems by rollout difficulty
+
+The baseline Qwen2.5-VL-3B-Instruct model achieved:
+| Split | Accuracy | Parse success rate |
+|---|---|---|
+| Validation | 22.2% |83.5%|
+| Test| 22.4% |83.8%|
+
+The best GRPO checkpoint improved held-out test accuracy from 22.4% to 28.9% and parse success rate from 83.5% to 90.86% on 1,007 untouched test problems, a +6.5 percentage-point gain on accuracy, corresponding to roughly 65 additional solved problems.
+
+A rough two-proportion test gives z≈3.35, suggesting that this held-out test improvement is unlikely to be explained by sampling noise alone. A paired gain/loss analysis would be the preferred follow-up test if per-example predictions are available.
+
+The main research finding is that the largest bottleneck is not just theorem knowledge. The biggest bottleneck appears to be object-theorem binding: the model often knows the relevant theorem but fails to bind it to the correct points, segments, angles, or circles in the diagram.
+
+A second key finding is that GRPO works best when the model already has mixed correct and incorrect rollouts. It helped on easier and medium-difficulty curriculum buckets, but showed little additional improvement on the hardest buckets. High pass@k on HardA examples showed that the model can sometimes sample correct solutions, but GRPO did not reliably convert those sampled tail solutions into higher accuracy@1.
 
 ---
 ## Stage 0 Data Split and processing (Completed)
@@ -214,6 +232,8 @@ The improved accuracy from Stage 2 to Stage 3A is likely noise, so I picked the 
 
 ### GRPO Analysis
 I sampled 500 problems from stage 3A training data. The model's pass@8 on the sample is 65%, and its pass@16 is around 82%. I ran two versions of stage 3A one using k=8 and the other using k=16. However, the accuracy of the k=16 run is not higher than the k=8 run. Although the model clearly has some latent ability and can find correct solutions in its sampling tail, but GRPO is not effectively moving those solutions into the default high-probability behavior. I compared the problem types in the validation data the k=8 checkpoint and k=16 checkpoints solved respectively, and found that k=16 improved some problems types but regressed on other types. That looks like strategy shifting, not uniform improvement. The k=16 checkpoint may have become better at certain theorem families while forgetting or destabilizing others. So the overall average barely moves. The training reinforces whatever wins in the sampled rollouts, but it does not necessarily preserve broad geometry competence.
+
+Stage 3B have more difficult problems than 3A, so it's expected that GRPO in stage 3B does not show improvement. Based on the findings from SFT and GRPO, I think a better way is to experiment on-policy ditillation: leverage the teacher model's ability in RL environment. 
 
 
 
