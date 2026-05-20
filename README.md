@@ -29,7 +29,21 @@ The main research finding is that the largest bottleneck is not just theorem kno
 A second key finding is that GRPO works best when the model already has mixed correct and incorrect rollouts. It helped on easier and medium-difficulty curriculum buckets, but showed little additional improvement on the hardest buckets. High pass@k on HardA examples showed that the model can sometimes sample correct solutions, but GRPO did not reliably convert those sampled tail solutions into higher accuracy@1.
 
 ---
-## Stage 0 Data Split and processing (Completed)
+## Dataset and Evaluation Setup
+### Dataset
+The project uses CASIA-PGPS9K, a visual geometry problem dataset with approximately 9K geometry problems across 30 problem types.
+
+One useful feature of this dataset is that it includes structural and semantic clauses describing the geometry diagram, such as:
+```
+length(AB) = 8
+angle(ABC) = 90
+perpendicular(AB, CD)
+collinear(A, B, C)
+midpoint(M, AB)
+```
+These annotations are not given to the model at final evaluation, but they are useful for reward design and diagnostic analysis.
+
+Stage 0 Data Split and processing (Completed)
 CASIA-PGPS9K has 9,022 total problems with 30 different problem types. The biggest highlight of this dataset is it includes structural and semantic clauses, which are the extracted geometric properties from the images. This can be very helpful for improving model's visual grounding capability. Some questions share the same geometry images. To avoid data leakage, I used group-level split: all the questions that share the same image belong to the same split. At the same time, I made sure the training, validation and test splits have similar ratios of problem types. The split result is:
 - Training data: 7,500 problems
 - Validation data: 513 problems 
