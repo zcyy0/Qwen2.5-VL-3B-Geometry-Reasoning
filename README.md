@@ -28,7 +28,6 @@ The main research finding is that the largest bottleneck is not just theorem kno
 
 A second key finding is that GRPO works best when the model already has mixed correct and incorrect rollouts. It helped on easier and medium-difficulty curriculum buckets, but showed little additional improvement on the hardest buckets. High pass@k on HardA examples showed that the model can sometimes sample correct solutions, but GRPO did not reliably convert those sampled tail solutions into higher accuracy@1.
 
----
 ## Dataset and Evaluation Setup
 ### Dataset
 The project uses CASIA-PGPS9K, a visual geometry problem dataset with approximately 9K geometry problems across 30 problem types.
@@ -43,18 +42,27 @@ midpoint(M, AB)
 ```
 These annotations are not given to the model at final evaluation, but they are useful for reward design and diagnostic analysis.
 
-Stage 0 Data Split and processing (Completed)
-CASIA-PGPS9K has 9,022 total problems with 30 different problem types. The biggest highlight of this dataset is it includes structural and semantic clauses, which are the extracted geometric properties from the images. This can be very helpful for improving model's visual grounding capability. Some questions share the same geometry images. To avoid data leakage, I used group-level split: all the questions that share the same image belong to the same split. At the same time, I made sure the training, validation and test splits have similar ratios of problem types. The split result is:
-- Training data: 7,500 problems
-- Validation data: 513 problems 
-- Test data: 1,007 problems
+### Data Split
+Some questions share the same geometry image. To avoid image-level leakage, I used a group-level split: all questions sharing the same image are assigned to the same split.
 
-I also did additional data processing including the following:
-- Some of the original questions use latex expressions. These questions are converted to natural language questions
-- The structural and semantic clauses are written in a special annotation. These clauses are converted to functional annotation.
-- The ground truth answers in CASIA-PGPS9K are float numbers to three decimals, but the model output answer can be a fractional number or contain symbols such as \sqrt, \pi etc. I wrote a util script that uses latex2sympy2 library to implement a fair comparison between the ground truth answer and the model answer.
+I also stratified the split to keep problem-type distributions similar across train, validation, and test.
+| Split | Number of Problems | 
+|---|---|
+| Training | 7500 |
+| Validation | 514 |
+| Test| 1007 |
 
-## Stage 1 Baseline Evaluation (Completed)
+The test set was held out during prompt engineering, curriculum mining, checkpoint selection, and hyperparameter tuning. Validation was used for checkpoint selection and analysis.
+
+### Data Processing
+I performed several preprocessing steps:
+
+- Converted some original LaTeX-style questions into natural language.
+- Converted PGPS9K structural and semantic clauses into a normalized functional annotation format.
+- Built a symbolic answer parser so the model can output decimals, fractions, radicals, π-expressions, units, or simple equations while still being fairly compared against the numeric ground truth.
+
+
+## Evaluation Protocol
 To evaluate the baseline model:
 - Give the model the question text and image, and prompt the model to output solution in \<think>...\</think>\<answer>...\</answer> format
 - Evaluated baseline model's accuracy on both validation data and test data.
