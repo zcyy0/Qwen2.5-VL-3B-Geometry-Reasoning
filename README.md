@@ -111,57 +111,77 @@ No parseable answer inside <answer>
 Parsed answer differs from gold by ≥ 0.01
 ```
 
+## Baseline Results
+The baseline Qwen2.5-VL-3B-Instruct model was evaluated with image + question only.
+| Split | Accuracy | Parse success rate |
+|---|---|---|
+| Validation | 22.2% |83.5%|
+| Test| 22.4% |83.8%|
 
-   
+### Baseline Accuracy by Problem Type
+The baseline model has very uneven performance across geometry types. Some theorem families are nearly unsolved, while simpler area, angle, and perimeter problems are much more tractable.
+| Problem Type | Accuracy |Correct/Total|
+|---|---|---|
+| Angle Bisector of Triangle | 0% |0/6|
+| Geometric Mean| 0% | 0/10|
+| Polygon Angle| 0% | 0/11|
+| Secant Angle  | 5.9% | 1/17|
+| Secant Segment   | 6.7% |1/15|
+| Circle Chord| 7.5% |3/40|
+| Inscribed Angle| 10% |2/20|
+| Median of Triangle| 14.3% |2/14|
+| Similarity in Parallel Line| 15.4% |2/13|
+| Tangent    | 16.7% |2/12|
+| Perimeter and Area of Polygon| 16.7% |1/6|
+| Rhombus and Square| 18.2% |4/22|
+| Parallel Lines    | 18.8% |6/32|
+| Trapezoid and Kite| 21.4% |6/28|
+|Perimeter and Area of Triangle|22.2%|2/9|
+| Line Segment  | 22.2% |2/9|
+| Circumference and Area of Circle| 23.5% |8/34|
+| Polygon Congruence | 25% | 3/12|
+| Pythagorean Theorem| 25% |2/8|
+| Midsegment of Triangle| 26.7% |4/15|
+| Trigonometry| 28.1% |9/32|
+| Angle Relation in Triangle| 28.6% |4/14|
+| Isosceles (Equilateral) Triangle| 31.6% |6/19|
+|  Polygon Similarity| 35% |7/20|
+| Arc Angle | 35.7% |5/14|
+| Parallelogram| 37.5% |9/24|
+| Rectangle | 37.5% |3/8|
+| Angle| 38.9% |7/18|
+| Perpendicular Bisector of Triangle| 40% |2/5|
+| Perimeter and Area of Quadrangle| 40.7% |11/27|
+
+## Baseline Failure Analysis
+Example question:
+>VWXY is a rhombus. Find angle WXY if angle WVY = 4b + 10 and angle XZW = 10b - 5.
+![](./assets/prob_3490.png)
+
+The model recognizes relevant properties of a rhombus:
+```
+All sides are equal.
+The diagonals of a rhombus bisect each other at right angles.
+```
+However, it incorrectly states that angle WVY and angle XZW are complementary angles.
+
+This is not a pure theorem-recall failure. The model knows some rhombus facts, but applies the wrong relationship to the wrong diagram objects.
 
 
-To evaluate the baseline model:
-- Give the model the question text and image, and prompt the model to output solution in \<think>...\</think>\<answer>...\</answer> format
-- Evaluated baseline model's accuracy on both validation data and test data.
 
-Results:
-- Validation data: Overall Accuracy: 22.2%; Parse Success Rate: 83.5%
-- Test data: Overall Accuracy: 22.4%; Parse success rate: 83.8%
 
-Model's accuracy broken down by problem type (ordered in ascending order):
-| Problem Type | Accuracy |
-|---|---|
-| Angle Bisector of Triangle | 0% |
-| Geometric Mean| 0% |
-| Polygon Angle| 0% |
-| Circle Chord| 5% |
-| Secant Angle  | 6% |
-| Secant Segment   | 7% |
-|Tangent    | 8% |
-|  Inscribed Angle| 10% |
-| Rhombus and Square| 14% |
-| Median of Triangle| 14% |
-| Similarity in Parallel Line| 15% |
-| Perpendicular Bisector of Triangle| 20% |
-| Isosceles (Equilateral) Triangle| 21% |
-| Trigonometry| 22% |
-| Parallelogram| 25% |
-| Polygon Congruence | 25% |
-| Pythagorean Theorem| 25% |
-| Midsegment of Triangle| 27% |
-| Angle Relation in Triangle| 29% |
-| Trapezoid and Kite| 29% |
-| Circumference and Area of Circle| 29% |
-| Parallel Lines    | 31% |
-| Line Segment  | 33% |
-| Perimeter and Area of Polygon| 33% |
-|  Polygon Similarity| 35% |
-| Arc Angle | 36% |
-| Perimeter and Area of Quadrangle| 37% |
-| Rectangle | 38% |
-| Angle| 39% |
-| Perimeter and Area of Triangle| 44% |
 
-By looking at individual problems that the model was wrong on, I have found a few failure patterns:
+
+
+
+
+
+
+
 
 ### 1. Visual hallucination
 exampl question: BD bisects angle ABC. Find the measure of angle DBC.
-![](./assets/prob_3490.png)
+
 
 The model correctly identifies 2x+7 and 4x-9 in the image, but hallucinate that there is a triangle in the image, and states "The sum of angles in a triangle is 180 degrees. Therefore, angle ABD + angle CBD + angle DBC = 180"
 
