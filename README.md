@@ -328,7 +328,7 @@ I used scale_rewards="batch" rather than group-level scaling to reduce question-
 
 Each stage was trained for one epoch. Additional epochs did not produce clear improvements in reward or validation accuracy.
 
-## Reward design
+### Reward design
 The reward design has the same basic answer-format skeleton across stages.
 #### Coupled Answer + Format Reward
 ```
@@ -394,7 +394,7 @@ The value may appear in one sentence while the relevant point names appear in th
 
 This matching is surface-level string/regex matching. It uses word-boundary checks for point names, simple value normalization, and a small predicate-to-keyword map. It does not verify that the reasoning is logically valid.
 
-### Theorem Coverage
+#### Theorem Coverage
 For each problem, I use a list of theorem names judged relevant by Gemini 2.5 Pro, such as:
 ```
 Angle Bisector Theorem
@@ -431,7 +431,7 @@ $$
 
 This is essentially bag-of-words token overlap with stemming. It is easy to game by sprinkling theorem vocabulary, so in Easy, Medium, and HardA it is only used as a multiplier on already-correct answers.
 
-### GRPO-Easy Reward
+#### GRPO-Easy Reward
 GRPO-Easy uses only the coupled answer-format reward: R=answer_reward
 where
 ```
@@ -440,7 +440,7 @@ grounding weights = 0.0
 ```
 Rationale: start with a dense reward signal on problems where the model already has high success probability.
 
-### GRPO-Medium Reward
+#### GRPO-Medium Reward
 GRPO-Medium adds grounding bonuses multiplicatively on top of correct answers:
 
 $$
@@ -455,29 +455,75 @@ w_theorems = 0.15
 ```
 Wrong rollouts receive 0 regardless of fact or theorem coverage.
 
-### GRPO-HardA Reward
+#### GRPO-HardA Reward
 GRPO-HardA uses the same reward as GRPO-Medium.
 
 The goal is to reinforce correct hard-sample rollouts while encouraging the correct responses to mention relevant visual facts and theorems.
 
-### GRPO-HardB Reward
+#### GRPO-HardB Reward
 HardB contains problems where the model produced zero correct rollouts during mining. Sparse final-answer reward gives almost no gradient in this setting, so I used a decoupled reward:
-```
+$$
 R= w_{\text{answer}} ​\cdot \text{answer reward} + w_{\text{facts}} \cdot \text{fact coverage} + w_{\text{theorems}} ​\cdot \text{theorem coverage} + w_{\text{loop}}\cdot \text{is loop}
+$$
+
+with
+```
+w_answer = 1.0
+w_facts = 0.15
+w_theorems = 0.15
+w_loop = -0.2
+aux_wrong_multiplier = 1.0
+loop_token_limit = 800
 ```
 
-1. Stage 1: Answer + Format: reward = 1.0 if answer is correct and the strict format is in the output; 0.0 otherwise.
-2. Stage 2: Answer + Format + Theorem + Facts: reward = 1.0 + grounding bonus if answer is correct; 0.0 otherwise. grounding bous = w_1 * visual_facts_coverage + w_2 * theorem_coverage
-3. Stage 3A: Same reward design as Stage 2
-4. Stage 3B: Answer + Format + Theorem + Facts + length penalty. Reward = 1.0 * answer_correct + w_1 * visual_facts_coverage + w_2 * theorem_coverage - 0.2 * loop_or_too_long
+In HardB, grounding reward is not gated by correctness. Wrong rollouts can earn grounding bonus. This was intended to provide some gradient when correct rollouts are essentially nonexistent.
 
-### Training analysis in each stage
-For each stage, I use Weights and Bias to track the reward mean, reward standard deviation, loss, KL, entropy. I also tracked two metrics: gen_prompt_correct and gen_overall_correct. Gen_prompt_correct computes the percentage of problems the model has at least one correct
-rollout for; gen_overall_correct computes the percentage of model's correct rollouts. 
+This introduces reward-hacking risk, so answer accuracy, reward mean, KL, entropy, and loop behavior were monitored separately.
 
-Stage 1
+#### Loop Detection
+A rollout is flagged as a loop if:
+```
+is_loop = (
+    not has_answer_tags
+    or detect_repetition(text)
+    or comp_len > loop_token_limit
+)
+```
+The repetition detector slides a 50-character window over the response and flags the response if any 50-character n-gram appears at least 3 times.
 
-gen_prompt_correct stay between 95% and 100% over the training. gen_overall_correct increased from 40% range to 60% range.
+This is a simple character-level detector, not a semantic loop detector.
+
+### GRPO Training Diagnostics
+For each stage, I tracked:
+```
+reward mean
+reward standard deviation
+GRPO loss
+KL
+entropy
+gen_prompt_correct
+gen_overall_correct
+```
+
+where
+```
+gen_prompt_correct = percentage of prompts with at least one correct rollout
+gen_overall_correct = percentage of generated rollouts that are correct
+```
+
+The GRPO loss is a policy surrogate loss, not a supervised cross-entropy loss. Therefore, negative loss values are expected and are not by themselves a sign of failure.
+
+Reward standard deviation is also expected to be high because the reward is sparse: most rollouts receive 0, while correct strict rollouts receive 1+ bonus.
+
+The more important diagnostics are whether reward mean, rollout correctness, KL, and entropy move together.
+
+#### GRPO Easy Results
+In GRPO-Easy, gen_prompt_correct stayed between 95% and 100%, meaning almost every prompt group had at least one correct rollout.
+
+gen_overall_correct increased from the 40% range to the 60% range.
+
+This suggests GRPO was effective when the model already had dense positive signal.
+
 | Reward mean | Reward std |
 | :---: | :---: |
 | ![](./assets/stage_1_mean_reward.png) | ![](./assets/stage_1_reward_std.png) | 
@@ -486,9 +532,13 @@ gen_prompt_correct stay between 95% and 100% over the training. gen_overall_corr
 | :---: | :---: |:---: |
 | ![](./assets/stage_1_kl.png) | ![](./assets/stage_1_entropy.png) |![](./assets/stage_1_loss.png) |
 
-Stage 2
+#### GRPO-Medium Results
+In GRPO-Medium, gen_prompt_correct stayed between 80% and 90%.
 
-gen_prompt_correct stay between 80% and 90%. gen_overall_correct increased from 29-33% to 35-40% range
+gen_overall_correct increased from roughly 29–33% to 35–40%.
+
+This was the most productive GRPO stage in terms of validation accuracy.
+
 | Reward mean | Reward std |
 | :---: | :---: |
 | ![](./assets/stage_2_mean_reward.png) | ![](./assets/stage_2_reward_std.png) | 
@@ -497,9 +547,19 @@ gen_prompt_correct stay between 80% and 90%. gen_overall_correct increased from 
 | :---: | :---: |:---: |
 | ![](./assets/stage_2_kl.png) | ![](./assets/stage_2_entropy.png) |![](./assets/stage_2_loss.png) |
 
-Stage 3A
+Training dynamics were generally healthy:
+```
+Reward mean increased.
+KL rose early and then stabilized.
+Entropy decreased and then stabilized.
+Loss was noisy and sometimes negative, which is normal for GRPO.
+```
+Validation accuracy improved from approximately 23.0% to 26.5%. On 514 validation examples, this is promising but not statistically conclusive by itself. The rough 95% confidence interval for the improvement includes zero.
 
-gen_prompt_correct and gen_overall_correct do not show clear improvement
+#### GRPO-HardA Results
+HardA contains problems where the model had zero correct rollouts under k=4 mining, but at least one correct rollout under k=8 mining.
+
+This means the model has some latent ability on these examples, but correct solutions are less frequent.
 | Reward mean | Reward std |
 | :---: | :---: |
 | ![](./assets/stage_3a_mean_reward.png) | ![](./assets/stage_3a_reward_std.png) | 
@@ -508,9 +568,13 @@ gen_prompt_correct and gen_overall_correct do not show clear improvement
 | :---: | :---: |:---: |
 | ![](./assets/stage_3a_kl.png) | ![](./assets/stage_3a_entropy.png) |![](./assets/stage_3a_loss.png) |
 
-Stage 3B
+The validation improvement from GRPO-Medium to GRPO-HardA was small and likely noisy. However, the GRPO-HardA checkpoint was selected as the best validation checkpoint for final test evaluation.
 
-gen_prompt_correct and gen_overall_correct do not show clear improvement. The training dynamics does not show clear learning. 
+#### GRPO-HardB Results
+HardB contains the hardest problems: examples where the model produced zero correct rollouts even after additional sampling.
+
+As expected, GRPO-HardB did not show clear learning. gen_prompt_correct, gen_overall_correct, and reward dynamics were mostly flat.
+
 | Reward mean | Reward std |
 | :---: | :---: |
 | ![](./assets/stage_3b_mean_reward.png) | ![](./assets/stage_3b_reward_std.png) | 
@@ -519,23 +583,118 @@ gen_prompt_correct and gen_overall_correct do not show clear improvement. The tr
 | :---: | :---: |:---: |
 | ![](./assets/stage_3b_kl.png) | ![](./assets/stage_3b_entropy.png) |![](./assets/stage_3b_loss.png) |
 
-### Evaluation at each stage
+The decoupled HardB reward provided some gradient through fact and theorem coverage, but this did not translate into better validation accuracy.
+
+This suggests that HardB may require stronger supervision, teacher traces, verifier-guided training, or a better curriculum before GRPO becomes useful.
+
+
+### Stage-wise Evaluation Results
 | Stage | Accuracy on Validation data |
 |---|---|
-| Stage 1 | 23%|
-| Stage 2| 26.5%|
-| Stage 3A|27.2%|
-| Stage 3B|27.2%|
+|Baseline| 22.2%|
+|GRPO-Easy | 23%|
+|GRPO-Medium| 26.5%|
+|GRPO-HardA|27.2%|
+|GRPO-HardB|27.2%|
 
-The improved accuracy from Stage 2 to Stage 3A is likely noise, so I picked the best checkpoint from Stage 3A. The evaluation accuracy on the test data is 28.9% compared to the baseline model's 22.4%.
+The best checkpoint was selected from GRPO-HardA.
+
+Final held-out test result:
+| Stage | Accuracy on Test data |
+|---|---|
+|Baseline| 22.4%|
+|Best GRPO checkpoint | 28.9%|
+
+This is a +6.5 percentage-point improvement on 1,007 untouched test problems.
+
+A rough two-proportion calculation gives:
+
+$$
+SE \approx 0.0194\\
+z = \frac{0.289−0.224}{0.0194} \approx 3.35
+$$
+
+So the held-out test gain is likely real, although a paired gain/loss analysis would be a better test if per-example predictions are available.
+
+### K=8 vs K=16 GRPO Analysis
+I sampled 500 examples from HardA and measured pass@k:
+| Metric | Value |
+|---|---|
+|pass@8| 68.2%|
+|pass@16 | 82.2%|
+
+This suggested that the model has substantial latent ability: many HardA problems can be solved somewhere in the sampling tail.
+
+I then compared two GRPO-HardA runs:
+| Run | Validation Accuracy |
+|---|---|
+|K=8 GRPO| 27.2%|
+|K=16 GRPO | 26.7%|
+
+The difference is only about 0.5 percentage points, roughly 2–3 validation problems, so it is likely noise. However, the important result is that K=16 did not clearly improve over K=8 despite higher pass@16.
+
+During training, K=16 had approximately twice the KL of K=8, while reward was very similar.
+
+This suggests K=16 was less KL-efficient: it moved the model farther away from the reference policy without improving validation accuracy.
+
+Why higher pass@k did not guarantee better accuracy@1? pass@k measures whether a correct solution appears somewhere in the sampling tail. Accuracy@1 measures whether the model’s default output is correct. These are different objectives. A problem may look like this under K=16 sampling:
+```
+15 wrong rollouts
+1 correct rollout
+```
+pass@16 counts this as solved, but GRPO still has to turn a rare sampled correct trajectory into high-probability behavior. That is a difficult credit-assignment problem, especially in visual geometry. The extra K=16 correct rollouts may also include:
+```
+rare tail solutions
+lucky final answers
+partially incorrect reasoning with correct answer
+problem-type-specific strategies
+non-generalizable theorem applications
+```
+GRPO reinforces whatever receives reward, but it does not necessarily preserve broad geometry competence. 
 
 ### GRPO Analysis
 I sampled 500 problems from stage 3A training data. The model's pass@8 on the sample is 65%, and its pass@16 is around 82%. I ran two versions of stage 3A one using k=8 and the other using k=16. However, the accuracy of the k=16 run is not higher than the k=8 run. Although the model clearly has some latent ability and can find correct solutions in its sampling tail, but GRPO is not effectively moving those solutions into the default high-probability behavior. I compared the problem types in the validation data the k=8 checkpoint and k=16 checkpoints solved respectively, and found that k=16 improved some problems types but regressed on other types. That looks like strategy shifting, not uniform improvement. The k=16 checkpoint may have become better at certain theorem families while forgetting or destabilizing others. So the overall average barely moves. The training reinforces whatever wins in the sampled rollouts, but it does not necessarily preserve broad geometry competence.
 
 Stage 3B have more difficult problems than 3A, so it's expected that GRPO in stage 3B does not show improvement. Based on the findings from SFT and GRPO, I think a better way is to experiment on-policy ditillation: leverage the teacher model's ability in RL environment. 
 
+### Qualitative Examples
+
+### Per Problem Type Comparison
+                                                                                                       
+  ┌────────────────────────────────────┬─────┬──────────────┬──────────────┬───────────┬────────────┐    
+  │            Problem Type            │  n  │   Baseline    │   Champion    │ Δ correct │ Δ acc (pp) │  
+  ├────────────────────────────────────┼─────┼───────────────┼───────────────┼───────────┼────────────┤  
+  │ Regressions                        │     │               │               │           │            │  
+  ├────────────────────────────────────┼─────┼───────────────┼───────────────┼───────────┼────────────┤  
+  │ Isosceles (Equilateral) Triangle   │  19 │ 6/19 (31.6%)  │ 4/19 (21.1%)  │        −2 │      −10.5 │  
+  ├────────────────────────────────────┼─────┼───────────────┼───────────────┼───────────┼────────────┤  
+  │ Polygon Congruence                 │  12 │ 3/12 (25.0%)  │ 2/12 (16.7%)  │        −1 │       −8.3 │  
+  ├────────────────────────────────────┼─────┼───────────────┼───────────────┼───────────┼────────────┤  
+  │ Median of Triangle                 │  14 │ 2/14 (14.3%)  │ 1/14 (7.1%)   │        −1 │       −7.1 │  
+  ├────────────────────────────────────┼─────┼───────────────┼───────────────┼───────────┼────────────┤  
+  │ Arc Angle                          │  14 │ 5/14 (35.7%)  │ 4/14 (28.6%)  │        −1 │       −7.1 │  
+  ├────────────────────────────────────┼─────┼───────────────┼───────────────┼───────────┼────────────┤  
+  │ Parallelogram                      │  24 │ 9/24 (37.5%)  │ 8/24 (33.3%)  │        −1 │       −4.2 │  
+  ├────────────────────────────────────┼─────┼───────────────┼───────────────┼───────────┼────────────┤  
+  │ Trapezoid and Kite                 │  28 │ 6/28 (21.4%)  │ 5/28 (17.9%)  │        −1 │       −3.6 │  
+  ├────────────────────────────────────┼─────┼───────────────┼───────────────┼───────────┼────────────┤  
+  │ Trigonometry                       │  32 │ 9/32 (28.1%)  │ 8/32 (25.0%)  │        −1 │       −3.1 │  
+  ├────────────────────────────────────┼─────┼───────────────┼───────────────┼───────────┼────────────┤  
+  │ Unchanged                          │     │               │               │           │            │  
+  ├────────────────────────────────────┼─────┼───────────────┼───────────────┼───────────┼────────────┤  
+  │ Perpendicular Bisector of Triangle │   5 │ 2/5 (40.0%)   │ 2/5 (40.0%)   │         0 │        0.0 │  
+  ├────────────────────────────────────┼─────┼───────────────┼───────────────┼───────────┼────────────┤  
+  │ Perimeter and Area of Triangle     │   9 │ 2/9 (22.2%)   │ 2/9 (22.2%)   │         0 │        0.0 │  
+  ├────────────────────────────────────┼─────┼───────────────┼───────────────┼───────────┼────────────┤  
+  │ Angle Relation in Triangle         │  14 │ 4/14 (28.6%)  │ 4/14 (28.6%)  │         0 │        0.0 │  
+  ├────────────────────────────────────┼─────┼───────────────┼───────────────┼───────────┼────────────┤  
+  │ Polygon Similarity                 │  20 │ 7/20 (35.0%)  │ 7/20 (35.0%)  │         0 │        0.0 │  
+  ├────────────────────────────────────┼─────┼───────────────┼───────────────┼───────────┼────────────┤  
+  │ Inscribed Angle                    │  20 │ 2/20 (10.0%)  │ 2/20 (10.0%)  │         0 │        0.0 │  
+  ├────────────────────────────────────┼─────┼───────────────┼───────────────┼───────────┼────────────┤  
+  │ Perimeter and Area of Quadrangle   │  27 │ 11/27 (40.7%) │ 11/27 (40.7%) │         0 │        0.0 │  
 
 
-## Stage 4 On-Policy Distillation (In Progress)
+## On-Policy Distillation (In Progress)
 
 
