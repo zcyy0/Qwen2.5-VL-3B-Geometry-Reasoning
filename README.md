@@ -382,7 +382,7 @@ For pure point/line declarations:
 The final score is:
 
 $$
-\text{visual_fact_coverage} = \frac{\text{matched non-trivial clauses​}}{\text{total non-trivial clauses}}
+\text{visual fact coverage} = \frac{\text{matched non-trivial clauses​}}{\text{total non-trivial clauses}}
 $$
 
 The ±1 sentence window is important because real reasoning often spans adjacent sentences. For example:
@@ -426,7 +426,7 @@ Score: 2 / 3 = 0.67
 The final theorem coverage is:
 
 $$
-\text{theorem_coverage} = \text{mean theorem score across relevant theorems}
+\text{theorem coverage} = \text{mean theorem score across relevant theorems}
 $$
 
 This is essentially bag-of-words token overlap with stemming. It is easy to game by sprinkling theorem vocabulary, so in Easy, Medium, and HardA it is only used as a multiplier on already-correct answers.
@@ -442,8 +442,9 @@ Rationale: start with a dense reward signal on problems where the model already 
 
 ### GRPO-Medium Reward
 GRPO-Medium adds grounding bonuses multiplicatively on top of correct answers:
+
 $$
-R = w_{\text{answer}} \cdot \text{answer_reward} 
+R = w_{\text{answer}} \cdot \text{answer reward} 
 $$
 
 1. Stage 1: Answer + Format: reward = 1.0 if answer is correct and the strict format is in the output; 0.0 otherwise.
