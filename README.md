@@ -444,7 +444,7 @@ Rationale: start with a dense reward signal on problems where the model already 
 GRPO-Medium adds grounding bonuses multiplicatively on top of correct answers:
 
 $$
-R = w_{\text{answer}} \cdot \text{answer reward} 
+R = w_{\text{answer}} \cdot \text{answer reward} \cdot (1+ w_{\text{facts}}​ \cdot \{fact coverage} + w_{\text{theorems}} \cdot \text{theorem coverage})
 $$
 
 1. Stage 1: Answer + Format: reward = 1.0 if answer is correct and the strict format is in the output; 0.0 otherwise.
