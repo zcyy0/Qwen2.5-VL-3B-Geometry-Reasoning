@@ -444,8 +444,27 @@ Rationale: start with a dense reward signal on problems where the model already 
 GRPO-Medium adds grounding bonuses multiplicatively on top of correct answers:
 
 $$
-R = w_{\text{answer}} \cdot \text{answer reward} \cdot (1+ w_{\text{facts}}​ \cdot \{fact coverage} + w_{\text{theorems}} \cdot \text{theorem coverage})
+R = w_{\text{answer}} \cdot \text{answer reward} \cdot (1+ w_{\text{facts}}​ \cdot \text{fact coverage} + w_{\text{theorems}} \cdot \text{theorem coverage})
 $$
+
+with
+```
+w_answer = 1.0
+w_facts = 0.15
+w_theorems = 0.15
+```
+Wrong rollouts receive 0 regardless of fact or theorem coverage.
+
+### GRPO-HardA Reward
+GRPO-HardA uses the same reward as GRPO-Medium.
+
+The goal is to reinforce correct hard-sample rollouts while encouraging the correct responses to mention relevant visual facts and theorems.
+
+### GRPO-HardB Reward
+HardB contains problems where the model produced zero correct rollouts during mining. Sparse final-answer reward gives almost no gradient in this setting, so I used a decoupled reward:
+```
+R= w_{\text{answer}} ​\cdot \text{answer reward} + w_{\text{facts}} \cdot \text{fact coverage} + w_{\text{theorems}} ​\cdot \text{theorem coverage} + w_{\text{loop}}\cdot \text{is loop}
+```
 
 1. Stage 1: Answer + Format: reward = 1.0 if answer is correct and the strict format is in the output; 0.0 otherwise.
 2. Stage 2: Answer + Format + Theorem + Facts: reward = 1.0 + grounding bonus if answer is correct; 0.0 otherwise. grounding bous = w_1 * visual_facts_coverage + w_2 * theorem_coverage
