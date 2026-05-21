@@ -336,8 +336,15 @@ Correct answer + strict <think>...</think><answer>...</answer> format → 1.0
 Correct answer + loose format                                      → 0.5
 Wrong answer                                                       → 0.0
 ```
-
-Strict formatting requires both <think> and <answer> tags.
+Strict formatting requires both <think> and <answer> tags. Loose format requires both \<answer\> tags to be present, but it can include the following cases
+```
+1. 1. Missing <think> block entirely: <answer>5</answer> — extracts "5" but strict regex requires
+  <think>...</think> first.
+2. Extra text outside the tags: Sure! <think>r</think> <answer>5</answer> Hope that helps.
+3. Tags in wrong order: <answer>5</answer> <think>reasoning</think> — extractable, not strict.
+4. Multiple <think> blocks
+5. Non-whitespace between </think> and <answer>: <think>r</think>. The answer is <answer>5</answer>. extractable, not strict.                           
+```
 
 #### Visual Fact Coverage
 PGPS9K provides annotated geometric clauses such as:
@@ -384,6 +391,55 @@ The value may appear in one sentence while the relevant point names appear in th
 
 This matching is surface-level string/regex matching. It uses word-boundary checks for point names, simple value normalization, and a small predicate-to-keyword map. It does not verify that the reasoning is logically valid.
 
+### Theorem Coverage
+For each problem, I use a list of theorem names judged relevant by Gemini 2.5 Pro, such as:
+```
+Angle Bisector Theorem
+Triangle Angle Sum
+Pythagorean Theorem
+Geometric Mean Theorem
+```
+
+For each gold theorem, the model receives a score based on vocabulary overlap with its reasoning.
+
+The scoring procedure is:
+```
+1. Lowercase the theorem name and reasoning.
+2. If the full theorem name appears verbatim, score = 1.0.
+3. Otherwise:
+   - tokenize the theorem name
+   - remove stopwords
+   - apply crude stemming
+   - compute the fraction of theorem tokens appearing in the reasoning
+```
+Example:
+```
+Gold theorem: "angle bisector theorem"
+Gold tokens: {angle, bisector, theorem}
+Reasoning: "angle bisector property"
+Score: 2 / 3 = 0.67
+```
+
+The final theorem coverage is:
+$$
+\text{theorem_coverage} = \text{mean theorem score across relevant theorems}
+$$
+This is essentially bag-of-words token overlap with stemming. It is easy to game by sprinkling theorem vocabulary, so in Easy, Medium, and HardA it is only used as a multiplier on already-correct answers.
+
+### GRPO-Easy Reward
+GRPO-Easy uses only the coupled answer-format reward: R=answer_reward
+where
+```
+w_answer = 1.0
+grounding weights = 0.0
+```
+Rationale: start with a dense reward signal on problems where the model already has high success probability.
+
+### GRPO-Medium Reward
+GRPO-Medium adds grounding bonuses multiplicatively on top of correct answers:
+$$
+R = w_{\text{answer}} \cdot \text{answer_reward} 
+$$
 
 1. Stage 1: Answer + Format: reward = 1.0 if answer is correct and the strict format is in the output; 0.0 otherwise.
 2. Stage 2: Answer + Format + Theorem + Facts: reward = 1.0 + grounding bonus if answer is correct; 0.0 otherwise. grounding bous = w_1 * visual_facts_coverage + w_2 * theorem_coverage
