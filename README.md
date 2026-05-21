@@ -157,7 +157,7 @@ The baseline model has very uneven performance across geometry types. Some theor
 #### Visual Hallucination
 Example question:
 > BD bisects angle ABC. Find the measure of angle DBC.
-> ![](./assets/prob_3490.png){width=100px height=100px}
+> ![](./assets/prob_3490.png)
 
 The model correctly identifies expressions such as 2x+7 and 4x−9, but hallucinates a triangle relation that is not present in the diagram. It states:
 
@@ -167,7 +167,7 @@ This suggests the model sometimes recognizes local visual text but fails to grou
 #### Geometry Relationship Confusion
 Example question:
 >VWXY is a rhombus. Find angle WXY if angle WVY = 4b + 10 and angle XZW = 10b - 5.
->![](./assets/prob_7718.png){width=100px height=100px}
+>![](./assets/prob_7718.png)
 
 The model recognizes relevant properties of a rhombus:
 
