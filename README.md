@@ -685,6 +685,7 @@ The baseline picked the wrong theorem family — used Pythagorean theorem on a c
 3. Object-theorem binding improvement example
 > Question asks "VWXY is a rhombus. Find angle WVZ if angle WVY = 4b+10 and angle XZW = 10b−5."
 > ![](./assets/prob_3141.png)
+
 Baseline:
 > The diagonals of a rhombus bisect each other at right angles. So, angle WVZ is half of angle WVY. We can use the given angles to find the value of b...
 
