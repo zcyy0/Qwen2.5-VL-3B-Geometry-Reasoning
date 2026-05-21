@@ -695,7 +695,21 @@ Stage 3B have more difficult problems than 3A, so it's expected that GRPO in sta
 | Rectangle | 8| 37.5% | 75| +3|
 | Angle| 18| 38.9% |44.4%| +1|
 | Perpendicular Bisector of Triangle| 5| 40% |40% | 0|
-| Perimeter and Area of Quadrangle| 27| 40.7% |40.7%| 0|                                                                                                       
+| Perimeter and Area of Quadrangle| 27| 40.7% |40.7%| 0|  
+
+If we group problem types by baseline accuracy:
+| Baselind Accuracy Bucket | N| Baseline Correct |GRPO Correct| Baseline Acc|GRPO Acc|
+|<20%|218| 24|43|11%|19.7%|
+|20–30%|161| 40| 47| 24.8%| 29.2%|
+|≥30%| 135| 50|50|37%|37%|
+
+Most of the improvement comes from types the baseline was bad at. So the GRPO checkpoint is not just getting better at already-easy categories. It is lifting some of the weaker categories. That supports the idea that curriculum GRPO improved harder or previously underperforming problem families.
+
+The most encouraging gains are in categories that require more explicit geometry relationships: parallel line relations, midsegment theorem, some circle/secant/tangent relations, some quadrilateral properties, some metric geometry. This lines up with the reward design, which encourages correct answers that mention visual facts and theorems.
+
+However, the model still does not solve the hardest theorem types robustly. Some categories improved from zero, but only by one problem, such as Angle Bisector of Triangle, Geometric Mean, Polygon Angle. This matches the earlier conclusion: GRPO is helping a bit, but it is not enough to teach the hardest missing geometry skills.
+
+The model regressed on 7 types. This is not catastrophic forgetting, because total regression is only -8 correct across all regressed types. But it does suggest strategy shifting: the GRPO checkpoint got better at some theorem families while slightly destabilizing others. This is consistent with what I observed in the K=8 vs K=16 experiment. GRPO reinforces whatever wins in sampled rollouts. That can improve some patterns but weaken others.
 
 
 ## On-Policy Distillation (In Progress)
