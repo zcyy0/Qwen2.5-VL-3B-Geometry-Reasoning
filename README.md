@@ -213,66 +213,113 @@ The model may know a theorem such as the Pythagorean theorem, angle bisector the
 
 The next major bottleneck is extracting useful visual facts from the diagram.
 
+## Supervised Fine-Tuning Experiments
+I first explored SFT because the failure analysis suggested the model needed more explicit supervision on visual grounding, theorem selection, and object-theorem binding.
+
+All SFT variants used the same 1,500 sampled training examples from PGPS9K. I used stratified sampling and upsampled problem types where the baseline model performed poorly.
+
+### Summary of SFT Variants
+| Version | Method |Validation Accuracy| Main Observation|
+|---|---|---|---|
+| 1.1 | Teacher-generated solutions | 17.7% |Severe output degeneration and long reasoning loops|
+| 1.2 | Teacher-corrected student responses |~baseline| Teacher corrections still shifted the response distribution|
+| 2.1| Rejection-sampling SFT from Qwen’s own correct responses |+1 pp|Stable but small improvement|
+| 2.2 |Hint-augmented rejection-sampling SFT using object-theorem bindings | 22.4% |Close to baseline; no robust gain|
 
 
+### Version 1.1: Teacher-Generated Responses
+I used Gemini 2.5 Pro to generate solutions that explicitly mentioned relevant visual facts and theorems. These responses were too verbose, so I asked Claude Sonnet to rewrite them more concisely while preserving key reasoning steps.
 
-
-
-
-
-### 3. Theorem misapplication (or blindness)
-example question: In triangle PQR, PS=8, QS=14. Find RS.
-
-
-The model does not know geometric mean theorem and tried to use Pythagorean theorem to solve the question, and got the wrong answer
-
-The failure analysis above shows that the model needs to learn visual grounding and geometry theorems to improve its geometry problem solving ability. SFT is the best option. 
-
-To quantify the failure pattern, I have tried the following ablations by varying the prompt:
-1. I asked a more capable model to output relevant visual facts in the diagram that help with problem solving, and add these relevant visual facts in the prompt when evaluating the baseline model. The evaluation accuracy on the validation dataset went up from 22% to 30.4%
-2. I removed the image, and only provided the model with the question and relevant visual fact texts, and the model's evaluation accuracy is 31.1%, close to the first case
-3. I asked a more capable model (Gemini 2.5 Pro) to list the relevant theorems for the problems, and based on 2, added the theorems to the prompt, the model's evaluation accuracy increased to 39.1%. To confirm that the increase in accuracy is due to relevant theorems, not longer prompt, I injected random theorems into the prompt, and the accuracy dropped back to 31.7%
-4. By inspecting the failure responses in 3, I found that the model failed to bind objects to the relevant theorems. For example, the model knows Pythagorean Theorem and that a^2 + b^2 = c^2, but it fails to identify the correct sides in the diagram to establish the equation. To verify that this is a bottleneck, I asked a more capable model (Gemini 2.5 Pro) to write object-theorem bindings for the problems, and injected these bindings in the prompt. Based on 3, the accuracy went up to 69.1%.
-5. Based on 4, I removed relevant visual facts from the prompt, so the prompt only contained question text + relevant theorems + object-theorem bindings, and the acurracy dropped back to 50%. 
-6. By inspecting the failure responses from 4, the remaining 30% incorrect responses are due to loop responses, incorrect arithetic operations.
-The results are summarized in the chart below:
-
-
-
-Based on the findings above, the biggest bottleneck identified is object-theorem binding. And the next bottleneck is extracting useful visual facts from the diagram.
-
-## Stage 2 SFT (Completed)
-To address the problems above, I have tried a few of different versions of SFT. The following versions use the same 1500 training examples samples from PGPS9K data. I also performed stratified sampling -- upsampling the problem types that the baseline model performed poorly at in stage 1. 
-
-### Version 1.1: Teacher model's response
-I used Gemini 2.5 Pro to write solutions for the problems and explicitly mentioned visual facts and relevant theorems in the solution. However, Gemini 2.5 Pro's response was too verbose, and SFT using these responses caused severe degeneration in the model's output. I then asked Claude Sonnet to re-write the responses to be more concise but still maintained the key visual facts and theorems. After SFT, the accuracy on the validation data is 17.7%, and the format compliance rate is 82.5%. This is still below 21% accuracy of the baseline model. Below is a comparison between the baseline model and the checkpoint
+However, SFT on these traces caused degeneration in the model’s outputs.
 | Metric | Baseline | Version 1 |
 |---|---|---|
 | **Accuracy** | 22.2% | 17.7% |
-| Answer extracted | 92.8% |82.5% |
-| Has `<think>` | 100.0% |100.0% |
-| Has `<answer>` | 93.0% | 82.7% |
-| Min token length | 41 | 31 |
-| Max token length | 7,932 | 8,053 |
-| Mean token length | 338 | 1,362 |
-| Median token length | 230 | 195 |
+| Min token length | 39 | 30 |
+| Max token length | 3893 | 8,053 |
+| Mean token length | 431.6| 1,360.7 |
+| Median token length | 216 | 192 |
+|P90|523|7,905  |
+|p99|3,823 | 8,013 |
 
-The model suffers from degenerative reasoning loops. The possible reason is the distribution of the teacher model's response tokens are very different from Qwen 2.5 VL model, and SFT causes a shift in model's output distribution. 
+The model began producing long degenerative reasoning loops. A likely cause is response-distribution shift: the teacher traces were stylistically and structurally different from the native Qwen2.5-VL response distribution.
 
-### Version 1.2: Teacher correcting student's response
-Based on the analysis from Version 1.1, I let the Qwen model write the response first, and then asked Claude Sonnet to correct the response. The goal is to maintain the style of the model's original response but at the same correct key errors in the reasoning. However, this method did not improve the model's accuracy at all. Upon further investigation, the beginning 1-2 sentences are usually fine, but Claude Sonnet began to make big corrections in the rest of the reasoning, and this still caused changes that are very different from the model's original style. 
+### Version 1.2: Teacher-Corrected Student Responses
+To reduce response-distribution shift, I asked Qwen to generate responses first, then asked Claude Sonnet to correct the reasoning.
 
-### Version 2.1: Rejection-Sampling Fine-tuning
-Based on Version 1.1 and Version 1.2, the Qwen model does not learn well from teacher generated responses. So I tried to ask the model to generate the responses itself, and kept the correct ones, and SFT using the data. This increased the accuracy on the validation dataset by 1%. 
+The goal was to preserve the model’s native style while fixing key errors. However, this did not improve accuracy. Inspection showed that the first one or two sentences often remained close to the original Qwen response, but the rest of the reasoning was heavily rewritten by the teacher, still causing a distribution mismatch.
 
-### Verstion 2.2: Hint-Augmented Rejection-Sampling Fine-tuning
-Version 2.1 has its limitations, it only reinforced the model's correct responses, but if the model does not have the object-theorem binding capability, it will not surface. Another idea I tried based on Version 2.1 is to inject the object-theorem binding in the prompt, and ask the model to generate reasoning response that explicitly mentions the object-theorem binding, and select the correct responses, and SFT using these responses. However, the accuracy on the validation data is 22.4%, very close to the baseline model. 
+### Version 2.1: Rejection-Sampling Fine-Tuning
+Since teacher-generated traces did not transfer well, I tried using the model’s own successful responses.
 
-### SFT conclusion
-None of the SFT methods above improved the model, so for GRPO, I decided to use the baseline model. 
+The pipeline was:
+```
+Generate multiple Qwen responses
+Keep correct responses
+SFT on the correct native-style traces
+```
+This was more stable than teacher SFT and improved validation accuracy by about 1 percentage point, but the gain was small.
 
-## Stage 3 GRPO (Completed)
-### GRPO set up
+### Version 2.2: Hint-Augmented Rejection-Sampling Fine-Tuning
+Version 2.1 only reinforces behaviors the model can already produce. To expose object-theorem binding, I injected object-theorem bindings into the prompt during data generation, asked the model to generate reasoning that explicitly used them, then kept correct responses for SFT.
+
+However, this checkpoint achieved 22.4% validation accuracy, close to baseline.
+
+### SFT Conclusion
+Under these data sizes and labeling strategies, SFT did not produce a robust improvement over the baseline.
+
+The main failure modes were:
+```
+Teacher-generated traces caused response-distribution shift.
+Rejection-sampling SFT was stable but only reinforced already-surfaced behaviors.
+Hint-augmented SFT did not reliably teach object-theorem binding.
+```
+Because SFT did not provide a strong baseline improvement, I used the original baseline model as the starting point for GRPO.
+
+## GRPO Curriculum Training
+### Curriculum Construction
+I classified training problems by sampling multiple rollouts from the baseline model.
+
+For each problem, I sampled 4 rollouts at temperature 0.6.
+```
+3–4 correct rollouts → Easy
+1–2 correct rollouts → Medium
+0 correct rollouts   → Hard
+```
+
+The hard bucket was further split by sampling 8 more rollouts:
+```
+At least 1 correct rollout → HardA
+0 correct rollouts         → HardB
+```
+This produced a curriculum:
+```
+GRPO-Easy → GRPO-Medium → GRPO-HardA → GRPO-HardB
+```
+The motivation is that GRPO is most useful when each prompt group has mixed outcomes: at least one good rollout and at least one bad rollout. All-zero groups provide little useful learning signal.
+
+### GRPO Training Configuration
+| Setting | Value |
+|---|---|
+|PEFT method|LoRA|
+|LoRA rank|32|
+|LoRA alpha|64|
+|LoRA dropout|0.05|
+|LoRA initialization|Kaiming, init_lora_weights=True|
+|Target modules|Language model + vision MLP + merger/projector|
+|Trainable parameters|74.9M|
+|Optimizer|AdamW|
+|Rollouts per prompt|8|
+|Effective prompts per step|16|
+|Max completion length|2048|
+|Loss type|grpo|
+|Reward scaling|batch|
+|GRPO clip / importance sampling| TRL GRPOConfig default|
+|Precision| bf16|
+
+I used scale_rewards="batch" rather than group-level scaling to reduce question-level difficulty bias from per-group normalization.
+
+
+
 - Curriculum learning: Ask the baseline model to generate 4 rollouts per problem with temperature=0.6. If there are 3 or 4 correct rollouts, classify the problem as easy; if there are 1 to 2 correct rollouts, classify the problem as medium; if there are 0 correct rollouts, classify the problem as hard. The training is divided into 3 stages: 1 easy -> 2 medium -> 3 hard. I further divided the hard problems into stage 3A and stage 3B. Let the model generate 8 rollouts per hard problem, if there's at least 1 correct rollout, the problem belongs to stage 3A. If there is zero correct rollouts, the problems belongs to stage 3B. 
 - Number of rollouts K = 8
 - One epoch each stage: After running for more than one epoch, the reward and accuracy did not increase.
