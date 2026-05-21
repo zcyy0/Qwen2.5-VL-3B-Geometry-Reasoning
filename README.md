@@ -158,7 +158,9 @@ The baseline model has very uneven performance across geometry types. Some theor
 Example question:
 > BD bisects angle ABC. Find the measure of angle DBC.
 > ![](./assets/prob_3490.png){width=100px height=100px}
+
 The model correctly identifies expressions such as 2x+7 and 4x−9, but hallucinates a triangle relation that is not present in the diagram. It states:
+
 > “The sum of angles in a triangle is 180 degrees. Therefore, angle ABD + angle CBD + angle DBC = 180.”
 This suggests the model sometimes recognizes local visual text but fails to ground the overall geometric structure.
 
@@ -168,6 +170,7 @@ Example question:
 >![](./assets/prob_7718.png){width=100px height=100px}
 
 The model recognizes relevant properties of a rhombus:
+
 ```
 All sides are equal.
 The diagonals of a rhombus bisect each other at right angles.
@@ -180,6 +183,7 @@ This is not a pure theorem-recall failure. The model knows some rhombus facts, b
 Example question:
 > In triangle PQR, PS = 8, QS = 14. Find RS
 > ![](./assets/prob_5734.png)
+
 The model fails to use the geometric mean theorem and instead tries to apply the Pythagorean theorem, producing an incorrect answer.
 
 This suggests that the model needs stronger theorem selection and theorem-application ability.
