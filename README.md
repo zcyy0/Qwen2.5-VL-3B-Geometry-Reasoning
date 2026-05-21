@@ -329,6 +329,62 @@ I used scale_rewards="batch" rather than group-level scaling to reduce question-
 Each stage was trained for one epoch. Additional epochs did not produce clear improvements in reward or validation accuracy.
 
 ## Reward design
+The reward design has the same basic answer-format skeleton across stages.
+#### Coupled Answer + Format Reward
+```
+Correct answer + strict <think>...</think><answer>...</answer> format → 1.0
+Correct answer + loose format                                      → 0.5
+Wrong answer                                                       → 0.0
+```
+
+Strict formatting requires both <think> and <answer> tags.
+
+#### Visual Fact Coverage
+PGPS9K provides annotated geometric clauses such as:
+```
+length(AB) = 8
+angle(ABC) = 90
+perpendicular(AB, CD)
+collinear(A, B, C)
+```
+
+I treat these as visual facts the model should ideally use in its reasoning.
+
+For each clause, I parse:
+```
+predicate type: length, angle, parallel, midpoint, ...
+point names: A, B, C, ...
+optional value: 8, 90, ...
+```
+Then I split the model’s <think> reasoning into sentences and slide a ±1 sentence window across the reasoning.
+
+A clause is matched if:
+```
+For value-bearing clauses:
+  the value appears in a sentence
+  and all point names appear within that sentence's ±1 window
+
+For predicate clauses:
+  a predicate keyword appears in a sentence
+  and all point names appear within that sentence's ±1 window
+
+For pure point/line declarations:
+  filtered out so they do not inflate the score
+```
+The final score is:
+$$
+\text{visual_fact_coverage} = \frac{\text{matched non-trivial clauses​}}{\text{total non-trivial clauses}}
+$$
+The ±1 sentence window is important because real reasoning often spans adjacent sentences. For example:
+```
+Given AB = 8.
+Using the Pythagorean theorem, AC² = AB² + BC².
+```
+The value may appear in one sentence while the relevant point names appear in the next.
+
+This matching is surface-level string/regex matching. It uses word-boundary checks for point names, simple value normalization, and a small predicate-to-keyword map. It does not verify that the reasoning is logically valid.
+
+
 1. Stage 1: Answer + Format: reward = 1.0 if answer is correct and the strict format is in the output; 0.0 otherwise.
 2. Stage 2: Answer + Format + Theorem + Facts: reward = 1.0 + grounding bonus if answer is correct; 0.0 otherwise. grounding bous = w_1 * visual_facts_coverage + w_2 * theorem_coverage
 3. Stage 3A: Same reward design as Stage 2
