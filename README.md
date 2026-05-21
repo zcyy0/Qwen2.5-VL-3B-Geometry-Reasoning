@@ -662,6 +662,35 @@ I sampled 500 problems from stage 3A training data. The model's pass@8 on the sa
 Stage 3B have more difficult problems than 3A, so it's expected that GRPO in stage 3B does not show improvement. Based on the findings from SFT and GRPO, I think a better way is to experiment on-policy ditillation: leverage the teacher model's ability in RL environment. 
 
 ### Qualitative Examples
+1. Visual grounding improvement example
+> Question asks "EDCF is a rectangle. Find the length of EF." (Diagram labels CD = 8x − 13 and EF = 7x + 11.)  
+> ![](./assets/prob_4076.png)
+
+Baseline:
+
+> Since EDCF is a rectangle, opposite sides are equal. Therefore, EF is equal to CD. Given that CD = 8x − 13, we can conclude that EF = 8x − 13.
+
+The baseline only read one of the two side labels in the diagram and produced a symbolic answer instead of solving for x. It had the right theorem (opposite sides equal in a rectangle) but missed the second piece of visual information that the problem requires. 
+The GRPO checkpoint correctly reads both labels, set 8x−13 = 7x+11 → x = 24 → EF = 7(24)+11 = 179.   
+
+2. Theorem use improvement example
+> Question asks "Find TR if PQ = 12, QR = 2, and TS = 3"
+> ![](./assets/prob_8033.png)
+
+Baseline:
+> "Since TS is a tangent to the circle at point T, TS is perpendicular to the radius at T. Therefore, triangle TQS is a right triangle with TS = 3 and QS = 5. Using the Pythagorean theorem, we can find the length of QT: QT = √(QS² − TS²) = √(25 − 9) = √16 = 4.
+
+The baseline picked the wrong theorem family — used Pythagorean theorem on a constructed right triangle when the correct tool is the power-of-a-point / secant-segment theorem (PQ · PR = TS · TR). It knew "tangent ⊥ radius" but didn't connect to the secant-tangent length relationship. The GRPO checkpoint applied the correct power-of-a-point and solved TR = 7
+
+3. Object-theorem binding improvement example
+> Question asks "VWXY is a rhombus. Find angle WVZ if angle WVY = 4b+10 and angle XZW = 10b−5."
+> ![](./assets/prob_3141.png)
+Baseline:
+> The diagonals of a rhombus bisect each other at right angles. So, angle WVZ is half of angle WVY. We can use the given angles to find the value of b...
+
+The baseline invoked the diagonals-bisect-at-right-angles property, but incorrectly identified the object relationship and set the wrong equation 4b+10 = 10b−5. The GRPO set the correct equation 10b-5 = 90, and solved the problem with the right answer. 
+     
+
 
 ### Per Problem Type Comparison
 | Problem Type | N| Baseline Accuracy |Best GRPO checkpoint| Delta Correct|
@@ -699,6 +728,7 @@ Stage 3B have more difficult problems than 3A, so it's expected that GRPO in sta
 
 If we group problem types by baseline accuracy:
 | Baselind Accuracy Bucket | N| Baseline Correct |GRPO Correct| Baseline Acc|GRPO Acc|
+|---|---|---|---|---|---|
 |<20%|218| 24|43|11%|19.7%|
 |20–30%|161| 40| 47| 24.8%| 29.2%|
 |≥30%| 135| 50|50|37%|37%|
