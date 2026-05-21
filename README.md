@@ -380,9 +380,11 @@ For pure point/line declarations:
   filtered out so they do not inflate the score
 ```
 The final score is:
+
 $$
 \text{visual_fact_coverage} = \frac{\text{matched non-trivial clauses​}}{\text{total non-trivial clauses}}
 $$
+
 The ±1 sentence window is important because real reasoning often spans adjacent sentences. For example:
 ```
 Given AB = 8.
@@ -422,9 +424,11 @@ Score: 2 / 3 = 0.67
 ```
 
 The final theorem coverage is:
+
 $$
 \text{theorem_coverage} = \text{mean theorem score across relevant theorems}
 $$
+
 This is essentially bag-of-words token overlap with stemming. It is easy to game by sprinkling theorem vocabulary, so in Easy, Medium, and HardA it is only used as a multiplier on already-correct answers.
 
 ### GRPO-Easy Reward
