@@ -4,7 +4,7 @@
 ![Model](https://img.shields.io/badge/Base_Model-Qwen_2.5_VL_3B-green)
 ![Tech](https://img.shields.io/badge/Stack-TRL_%7C_VLLM_%7C_LoRA-blue)
 
-## 📌 Project Summary
+## 1. Project Summary
 This project investigates whether supervised fine-tuning and GRPO can improve visual geometry reasoning in Qwen2.5-VL-3B-Instruct on the [CASIA-PGPS9K](https://nlpr.ia.ac.cn/databases/CASIA-PGPS9K/index.html) geometry benchmark.
 I built a full training and evaluation pipeline using:
 
@@ -28,7 +28,7 @@ The main research finding is that the largest bottleneck is not just theorem kno
 
 A second key finding is that GRPO works best when the model already has mixed correct and incorrect rollouts. It helped on easier and medium-difficulty curriculum buckets, but showed little additional improvement on the hardest buckets. High pass@k on HardA examples showed that the model can sometimes sample correct solutions, but GRPO did not reliably convert those sampled tail solutions into higher accuracy@1.
 
-## Dataset and Evaluation Setup
+## 2. Dataset and Evaluation Setup
 ### Dataset
 The project uses CASIA-PGPS9K, a visual geometry problem dataset with approximately 9K geometry problems across 30 problem types.
 
@@ -62,7 +62,7 @@ I performed several preprocessing steps:
 - Built a symbolic answer parser so the model can output decimals, fractions, radicals, π-expressions, units, or simple equations while still being fairly compared against the numeric ground truth.
 
 
-## Evaluation Protocol
+### Evaluation Protocol
 All reported main accuracy numbers are accuracy@1.
 
 Evaluation uses:
@@ -76,7 +76,7 @@ No visual facts, theorem labels, object-theorem bindings, or PGPS9K clauses are 
 
 Evaluation and training use the same base prompt format.
 
-### Answer Extraction and Checking
+#### Answer Extraction and Checking
 The evaluation pipeline is:
 ```
 extract_answer → parse_numeric → check_answer
@@ -111,7 +111,7 @@ No parseable answer inside <answer>
 Parsed answer differs from gold by ≥ 0.01
 ```
 
-## Baseline Results
+## 3. Baseline Results
 The baseline Qwen2.5-VL-3B-Instruct model was evaluated with image + question only.
 | Split | Accuracy | Parse success rate |
 |---|---|---|
@@ -213,7 +213,7 @@ The model may know a theorem such as the Pythagorean theorem, angle bisector the
 
 The next major bottleneck is extracting useful visual facts from the diagram.
 
-## Supervised Fine-Tuning Experiments
+## 4. Supervised Fine-Tuning Experiments
 I first explored SFT because the failure analysis suggested the model needed more explicit supervision on visual grounding, theorem selection, and object-theorem binding.
 
 All SFT variants used the same 1,500 sampled training examples from PGPS9K. I used stratified sampling and upsampled problem types where the baseline model performed poorly.
@@ -275,7 +275,7 @@ Hint-augmented SFT did not reliably teach object-theorem binding.
 ```
 Because SFT did not provide a strong baseline improvement, I used the original baseline model as the starting point for GRPO.
 
-## GRPO Curriculum Training
+## 5. GRPO Curriculum Training
 ### Curriculum Construction
 I classified training problems by sampling multiple rollouts from the baseline model.
 
