@@ -318,16 +318,17 @@ The motivation is that GRPO is most useful when each prompt group has mixed outc
 
 I used scale_rewards="batch" rather than group-level scaling to reduce question-level difficulty bias from per-group normalization.
 
+### KL Coefficients
+| GRPO Stage | KL Beta |
+|---|---|
+|GRPO-Easy|0.02|
+|GRPO-Medium|0.01|
+|GRPO-HardA|0.005|
+|GRPO-HardB|0.005|
 
+Each stage was trained for one epoch. Additional epochs did not produce clear improvements in reward or validation accuracy.
 
-- Curriculum learning: Ask the baseline model to generate 4 rollouts per problem with temperature=0.6. If there are 3 or 4 correct rollouts, classify the problem as easy; if there are 1 to 2 correct rollouts, classify the problem as medium; if there are 0 correct rollouts, classify the problem as hard. The training is divided into 3 stages: 1 easy -> 2 medium -> 3 hard. I further divided the hard problems into stage 3A and stage 3B. Let the model generate 8 rollouts per hard problem, if there's at least 1 correct rollout, the problem belongs to stage 3A. If there is zero correct rollouts, the problems belongs to stage 3B. 
-- Number of rollouts K = 8
-- One epoch each stage: After running for more than one epoch, the reward and accuracy did not increase.
-- Learning rate: 1e-5
-- LoRA: LLM + Vision MLP + Projector
-- Beta: Stage 1: 0.02. Stage 2: 0.01. Stage 3: 0.005
-
-### Reward design
+## Reward design
 1. Stage 1: Answer + Format: reward = 1.0 if answer is correct and the strict format is in the output; 0.0 otherwise.
 2. Stage 2: Answer + Format + Theorem + Facts: reward = 1.0 + grounding bonus if answer is correct; 0.0 otherwise. grounding bous = w_1 * visual_facts_coverage + w_2 * theorem_coverage
 3. Stage 3A: Same reward design as Stage 2
