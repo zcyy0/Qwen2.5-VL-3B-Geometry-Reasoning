@@ -661,7 +661,7 @@ Stage 3B have more difficult problems than 3A, so it's expected that GRPO in sta
 
 ### Per Problem Type Comparison
 | Problem Type | N| Baseline Accuracy |Best GRPO checkpoint| Delta Correct|
-|---|---|---|---|---|---|
+|---|---|---|---|---|
 | Angle Bisector of Triangle |6| 0% |16.7%| +1|
 | Geometric Mean| 10| 0% | 10.0%| +1|
 | Polygon Angle| 11| 0% | 9.1%| +1|
