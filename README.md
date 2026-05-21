@@ -153,7 +153,7 @@ The baseline model has very uneven performance across geometry types. Some theor
 | Perpendicular Bisector of Triangle| 40% |2/5|
 | Perimeter and Area of Quadrangle| 40.7% |11/27|
 
-## Baseline Failure Analysis
+### Baseline Failure Analysis
 #### Visual Hallucination
 Example question:
 > BD bisects angle ABC. Find the measure of angle DBC.
