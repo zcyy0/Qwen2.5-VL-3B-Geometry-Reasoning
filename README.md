@@ -345,6 +345,7 @@ Strict formatting requires both <think> and <answer> tags. Loose format requires
 4. Multiple <think> blocks
 5. Non-whitespace between </think> and <answer>: <think>r</think>. The answer is <answer>5</answer>. extractable, not strict.                           
 ```
+The correct answer + loose format only showed up 0.2% in the validation examples. 
 
 #### Visual Fact Coverage
 PGPS9K provides annotated geometric clauses such as:
