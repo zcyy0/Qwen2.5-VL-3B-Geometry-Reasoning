@@ -743,6 +743,6 @@ However, the model still does not solve the hardest theorem types robustly. Some
 The model regressed on 7 types. This is not catastrophic forgetting, because total regression is only -8 correct across all regressed types. But it does suggest strategy shifting: the GRPO checkpoint got better at some theorem families while slightly destabilizing others. This is consistent with what I observed in the K=8 vs K=16 experiment. GRPO reinforces whatever wins in sampled rollouts. That can improve some patterns but weaken others.
 
 
-## On-Policy Distillation (In Progress)
+## Direct Preference Optimization
 
-
+## On Policy Distillation 
