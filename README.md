@@ -20,24 +20,9 @@ The baseline Qwen2.5-VL-3B-Instruct model achieved:
 | Validation | 22.2% |83.5%|
 | Test| 22.4% |83.8%|
 
-The final training pipeline combined curriculum GRPO with a post-GRPO DPO preference-optimization stage on HardA rollouts. The baseline Qwen2.5-VL-3B-Instruct model achieved 22.4% accuracy on the 1,007-problem held-out test set. The best GRPO checkpoint improved test accuracy to 28.9%, and a subsequent vanilla DPO stage further improved test accuracy to 30.69%.
+The final pipeline improved Qwen2.5-VL-3B-Instruct from 22.4% to 30.69% accuracy on the 1,007-problem CASIA-PGPS9K held-out test set, a +8.29 percentage-point gain corresponding to roughly 83 additional solved problems. The pipeline first used curriculum GRPO, which improved test accuracy to 28.9%, then applied vanilla DPO on HardA rollout pairs to further improve accuracy to 30.69%.
 
-Overall, the full pipeline improved test accuracy from:
-
-$$ 22.4 \% \rightarrow 30.69\% $$
-
-
-
-
-
-
-The best GRPO checkpoint improved held-out test accuracy from 22.4% to 28.9% and parse success rate from 83.5% to 90.86% on 1,007 untouched test problems, a +6.5 percentage-point gain on accuracy, corresponding to roughly 65 additional solved problems.
-
-A rough two-proportion test gives z≈3.35, suggesting that this held-out test improvement is unlikely to be explained by sampling noise alone. A paired gain/loss analysis would be the preferred follow-up test if per-example predictions are available.
-
-The main research finding is that the largest bottleneck is not just theorem knowledge. The biggest bottleneck appears to be object-theorem binding: the model often knows the relevant theorem but fails to bind it to the correct points, segments, angles, or circles in the diagram.
-
-A second key finding is that GRPO works best when the model already has mixed correct and incorrect rollouts. It helped on easier and medium-difficulty curriculum buckets, but showed little additional improvement on the hardest buckets. High pass@k on HardA examples showed that the model can sometimes sample correct solutions, but GRPO did not reliably convert those sampled tail solutions into higher accuracy@1.
+The main finding is that the model’s largest bottleneck is object-theorem binding, not merely theorem recall. Oracle ablations showed that providing object-theorem bindings produced the largest accuracy jump. GRPO was effective on easy and medium curriculum buckets, where the model had mixed correct and incorrect rollouts, but plateaued on harder buckets. DPO was more effective after GRPO because it directly used high-k sampled HardA rollouts to teach the model to prefer correct geometry trajectories over plausible but incorrect ones.
 
 ## 2. Dataset and Evaluation Setup
 ### Dataset
