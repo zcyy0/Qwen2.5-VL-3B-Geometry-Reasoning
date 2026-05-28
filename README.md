@@ -778,6 +778,7 @@ I compared two preference-optimization variants. Both variants have starting poi
 | Margin | Accuracy |
 | :---: | :---: |
 | ![](./assets/dpo_margin.png) | ![](./assets/dpo_accuracy.png) |
+
 Although the chosen reward became slightly negative, the rejected reward decreased more, so the chosen-rejected margin increased. This suggests that vanilla DPO learned to prefer correct rollouts over incorrect hard negatives, but did so partly by pushing rejected responses down rather than strongly increasing the absolute likelihood of chosen responses.
 
 I also tried adding an NLL term on the chosen response through RPO with α = 0.1. This made the chosen reward positive, which addressed the training-diagnostic concern. However, it did not improve held-out test accuracy and underperformed vanilla DPO on the test set.
