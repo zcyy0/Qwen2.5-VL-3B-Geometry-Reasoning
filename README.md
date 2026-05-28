@@ -24,9 +24,7 @@ The final training pipeline combined curriculum GRPO with a post-GRPO DPO prefer
 
 Overall, the full pipeline improved test accuracy from:
 
-$$
-22.4 \% \rightarrow 30.69\%
-$$
+$$ 22.4 \% \rightarrow 30.69\% $$
 
 
 
