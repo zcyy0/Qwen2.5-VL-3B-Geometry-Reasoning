@@ -743,7 +743,7 @@ However, the model still does not solve the hardest theorem types robustly. Some
 The model regressed on 7 types. This is not catastrophic forgetting, because total regression is only -8 correct across all regressed types. But it does suggest strategy shifting: the GRPO checkpoint got better at some theorem families while slightly destabilizing others. This is consistent with what I observed in the K=8 vs K=16 experiment. GRPO reinforces whatever wins in sampled rollouts. That can improve some patterns but weaken others.
 
 
-## 4. Direct Preference Optimization
+## 6. Direct Preference Optimization
 After GRPO, I observed that the model had substantial latent ability on HardA problems: with high-k sampling, it could often generate at least one correct solution, but GRPO did not reliably move those correct tail samples into the model’s top-1 behavior.
 
 To directly target this pass@k-to-accuracy@1 gap, I ran a preference-optimization stage starting from the best GRPO checkpoint.
