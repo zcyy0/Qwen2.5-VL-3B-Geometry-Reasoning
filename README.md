@@ -743,6 +743,45 @@ However, the model still does not solve the hardest theorem types robustly. Some
 The model regressed on 7 types. This is not catastrophic forgetting, because total regression is only -8 correct across all regressed types. But it does suggest strategy shifting: the GRPO checkpoint got better at some theorem families while slightly destabilizing others. This is consistent with what I observed in the K=8 vs K=16 experiment. GRPO reinforces whatever wins in sampled rollouts. That can improve some patterns but weaken others.
 
 
-## Direct Preference Optimization
+## 4. Direct Preference Optimization
+After GRPO, I observed that the model had substantial latent ability on HardA problems: with high-k sampling, it could often generate at least one correct solution, but GRPO did not reliably move those correct tail samples into the model’s top-1 behavior.
+
+To directly target this pass@k-to-accuracy@1 gap, I ran a preference-optimization stage starting from the best GRPO checkpoint.
+
+### DPO Data Construction
+For each HardA training problem, I sampled 16 rollouts from the best GRPO checkpoint. For the chosen response, I selected a correct rollout with the highest combination of:
+
+```text
+visual fact recall
+theorem recall
+strict format
+no loop
+not hitting the max token limit
+```
+For the rejected response, I selected a hard negative satisfying:
+```
+incorrect final answer
+strict <think>...</think><answer>...</answer> format
+no loop
+does not hit max token limit
+```
+This rejected-response filter was designed to avoid trivial negatives such as malformed outputs or loops. The goal was to teach the model to prefer geometrically correct reasoning over plausible but incorrect reasoning, rather than merely learning format compliance.
+
+### DPO Experiment
+I compared two preference-optimization variants. Both variants have starting point from the best GRPO checkpoints, beta=0.1, learning rate=2e-6, epochs=3. The first variant is vanilla DPO, while the second variant is DPO + RPO/NLL. The vanilla DPO checkpoint achieved 30.69% test accuracy, improving over the best GRPO checkpoint’s 28.9% and the baseline model’s 22.4%.
+
+### DPO training dynamics
+| Reward Rejected | Reward Chosen|
+| :---: | :---: |
+| ![](./assets/dpo_rejected_reward.png) | ![](./assets/dpo_chosen_reward.png) | 
+
+| Margin | Accuracy |
+| :---: | :---: |
+| ![](./assets/dpo_margin.png) | ![](./assets/dpo_accuracy.png) |
+Although the chosen reward became slightly negative, the rejected reward decreased more, so the chosen-rejected margin increased. This suggests that vanilla DPO learned to prefer correct rollouts over incorrect hard negatives, but did so partly by pushing rejected responses down rather than strongly increasing the absolute likelihood of chosen responses.
+
+I also tried adding an NLL term on the chosen response through RPO with α = 0.1. This made the chosen reward positive, which addressed the training-diagnostic concern. However, it did not improve held-out test accuracy and underperformed vanilla DPO on the test set.
+
+This suggests that making the chosen implicit reward positive is not necessarily sufficient for better generalization. In this setting, vanilla DPO’s relative preference signal was more effective than adding a small supervised likelihood term to the chosen responses.
 
 ## On Policy Distillation 
