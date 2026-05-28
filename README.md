@@ -20,6 +20,18 @@ The baseline Qwen2.5-VL-3B-Instruct model achieved:
 | Validation | 22.2% |83.5%|
 | Test| 22.4% |83.8%|
 
+The final training pipeline combined curriculum GRPO with a post-GRPO DPO preference-optimization stage on HardA rollouts. The baseline Qwen2.5-VL-3B-Instruct model achieved 22.4% accuracy on the 1,007-problem held-out test set. The best GRPO checkpoint improved test accuracy to 28.9%, and a subsequent vanilla DPO stage further improved test accuracy to 30.69%.
+
+Overall, the full pipeline improved test accuracy from:
+$$
+22.4\% \rightarrow 30.69\%
+$$
+
+
+
+
+
+
 The best GRPO checkpoint improved held-out test accuracy from 22.4% to 28.9% and parse success rate from 83.5% to 90.86% on 1,007 untouched test problems, a +6.5 percentage-point gain on accuracy, corresponding to roughly 65 additional solved problems.
 
 A rough two-proportion test gives z≈3.35, suggesting that this held-out test improvement is unlikely to be explained by sampling noise alone. A paired gain/loss analysis would be the preferred follow-up test if per-example predictions are available.
