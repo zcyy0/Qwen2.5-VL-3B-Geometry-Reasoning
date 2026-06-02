@@ -781,4 +781,3 @@ I also tried adding an NLL term on the chosen response through RPO with α = 0.1
 
 This suggests that making the chosen implicit reward positive is not necessarily sufficient for better generalization. In this setting, vanilla DPO’s relative preference signal was more effective than adding a small supervised likelihood term to the chosen responses.
 
-## On Policy Distillation 
