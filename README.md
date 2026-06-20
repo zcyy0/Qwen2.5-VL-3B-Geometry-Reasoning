@@ -1,9 +1,4 @@
 # 📐 Visual Geometry Reasoning using Qwen2.5-VL
-
-![Status](https://img.shields.io/badge/Status-Training_In_Progress-yellow)
-![Model](https://img.shields.io/badge/Base_Model-Qwen_2.5_VL_3B-green)
-![Tech](https://img.shields.io/badge/Stack-TRL_%7C_VLLM_%7C_LoRA-blue)
-
 This project investigates whether supervised fine-tuning and GRPO can improve visual geometry reasoning in Qwen2.5-VL-3B-Instruct on the [CASIA-PGPS9K](https://nlpr.ia.ac.cn/databases/CASIA-PGPS9K/index.html) geometry benchmark.
 I built a full training and evaluation pipeline using:
 
