@@ -60,36 +60,26 @@ a design choice, I state the alternative I rejected and why.
 
 ---
 
-## 1. Why one GPU isn't enough — the memory math
+## 1. Why one GPU isn't enough
 
 Full-parameter training with AdamW in the standard mixed-precision layout costs a fixed
-**16 bytes per parameter**, independent of batch size:
+16 bytes per parameter, independent of batch size:
 
 | component | dtype | bytes/param |
 |---|---|---|
 | weights (compute copy) | bf16 | 2 |
 | gradients | bf16 | 2 |
-| **master weights** | fp32 | 4 |
+| master weights | fp32 | 4 |
 | Adam `exp_avg` (first moment) | fp32 | 4 |
 | Adam `exp_avg_sq` (second moment) | fp32 | 4 |
-| **total** | | **16** |
+| total| | 16 |
 
-`7e9 params × 16 B ≈ 112 GB` of training state — **before a single activation**. That overflows a
+`7e9 params × 16 B ≈ 112 GB` of training state — before a single activation. That overflows a
 96 GB card, and that overflow is the entire motivation for ZeRO-3 sharding.
 
-**The detail that makes the premise true:** the model is loaded in **fp32**, not bf16. FSDP's
-`MixedPrecision(param_dtype=bf16)` casts to bf16 for compute and communication but keeps the
-**fp32 master shard**, and AdamW then holds **fp32 moments** — exactly the 16 B/param recipe above.
-Loading in bf16 instead would give bf16 optimizer states (~56 GB) that *would* fit on one card —
-collapsing the premise (and yielding a less numerically stable full fine-tune). The vision tower is
-**frozen** (`requires_grad_(False)` on `visual.*`), so it carries no gradients or optimizer state;
-the SFT signal is on text reasoning anyway.
+the model is loaded in fp32, not bf16. FSDP's `MixedPrecision(param_dtype=bf16)` casts to bf16 for compute and communication but keeps the fp32 master shard, and AdamW then holds fp32 moments — exactly the 16 B/param recipe above. Loading in bf16 instead would give bf16 optimizer states (~56 GB) that would fit on one card — collapsing the premise (and yielding a less numerically stable full fine-tune). The vision tower is frozen (`requires_grad_(False)` on `visual.*`), so it carries no gradients or optimizer state
 
-**I verified the failure rather than assuming it.** Running on a single GPU (where FSDP degrades to
-`NO_SHARD`), the fp32 master weights plus gradients fill the card to **94.82 GB**, and the run then
-**OOMs inside `optim.step()`** — the crash site is `adam.py → _init_group → torch.zeros_like`, i.e.
-*precisely the allocation of Adam's `exp_avg`*. It can't find the last ~260 MB. This is the cleanest
-possible statement of the problem: the model does not fit, and it fails at exactly the predicted place.
+Running on a single GPU (where FSDP degrades to `NO_SHARD`), the fp32 master weights plus gradients fill the card to 94.82 GB, and the run then OOMs inside `optim.step()` — the crash site is `adam.py → _init_group → torch.zeros_like`, i.e. precisely the allocation of Adam's `exp_avg`. It can't find the last ~260 MB. 
 
 ---
 
