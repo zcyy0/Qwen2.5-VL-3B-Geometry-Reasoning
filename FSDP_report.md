@@ -22,10 +22,10 @@
   optimizer state — ~112 GB, which overflows a single 96 GB card. I reproduced the exact
   failure: the run fills the card to 94.8 GB and then dies *inside the optimizer step* allocating
   Adam's first moment. This is the concrete reason sharding is *required*, not optional.
-- FSDP `FULL_SHARD` (ZeRO-3) across 2 GPUs shards parameters, gradients, **and** optimizer
+- FSDP `FULL_SHARD` (ZeRO-3) across 2 GPUs shards parameters, gradients, and optimizer
   state, bringing peak memory to ~75 GB/GPU — the model that OOM'd now trains with headroom.
 - Profiling shows the run is communication-bound: at the naïve configuration over 70% of
-  step time is *exposed* communication — the GPU stalling on all-gather / reduce-scatter over a
+  step time is exposed communication — the GPU stalling on all-gather / reduce-scatter over a
   no-NVLink, cross-NUMA PCIe link.
 - I closed most of that gap with two well-understood levers, raising throughput **4.2×
   (690 → 2903 tok/s, MFU 3.1% → 13.1%)** and collapsing exposed comms from **70% to 18%**:
@@ -33,9 +33,9 @@
     *and* grow the compute kernel that hides the all-gather behind it.
   - **`no_sync` gradient accumulation** drops reduce-scatter rounds **8 → 1**, worth **+63%** in
     the memory-bound regime where micro-batch size is capped.
-- A **fixed-seed `micro_bsz=1` vs `micro_bsz=8` control** confirms the optimization trajectory is
+- A fixed-seed `micro_bsz=1` vs `micro_bsz=8` control confirms the optimization trajectory is
   identical to floating-point precision (**max 0.53% loss drift over 30 steps**). The 4.2× is a
-  *systems* win with **zero quality cost** — `micro_bsz` is a throughput knob, not a quality knob.
+  systems win with zero quality cost — `micro_bsz` is a throughput knob, not a quality knob.
 
 ```
 Throughput vs micro-batch size   (effective batch fixed at 16, no_sync off)
