@@ -221,7 +221,7 @@ Apples-to-apples at the same `1×8` config and the same profiler window:
 **The two levers attack the *same* cost — reduce-scatter rounds — from opposite ends:**
 
 - Raising `micro_bsz` at fixed effective batch *lowers* `grad_accum`, which both cuts RS rounds
-  (8 → 4 → 2 → 1) **and** grows the compute that hides the all-gather.
+  (8 → 4 → 2 → 1) and grows the compute that hides the all-gather.
 - `no_sync` cuts RS rounds at *fixed* `grad_accum`.
 
 So once you can afford **`micro_bsz=8` (`grad_accum=1`)**, you've already driven RS rounds to the
@@ -229,18 +229,18 @@ floor of 1 — and **`no_sync` adds nothing** (it's a no-op at `grad_accum=1`). 
 (2903 tok/s) beats `mb4_ns` (2383): paying for `no_sync` instead of just using a bigger micro-batch
 leaves throughput on the table.
 
-**`no_sync` is the lever for when memory caps `micro_bsz` below your target effective batch**,
+`no_sync` is the lever for when memory caps `micro_bsz` below your target effective batch,
 forcing `grad_accum > 1` — e.g. wanting effective batch 64 on a card that only fits `micro_bsz=8`
 → `grad_accum=4` → `no_sync` recovers the 4× RS reduction you *can't* get by raising `micro_bsz`
 (you're out of memory). For *this* setup (effective batch 16, 7B fits at `micro_bsz=8`), the
-throughput-optimal answer is simply **`micro_bsz=8` / `grad_accum=1`**.
+throughput-optimal answer is simply `micro_bsz=8` / `grad_accum=1.
 
 ---
 
 ## 5. Did the speedup cost any training quality? (a control experiment)
 
 Tuning `micro_bsz` for throughput at fixed effective batch is only legitimate if the optimization
-trajectory is genuinely *invariant* to it. So I tested it directly, as a **correctness** check.
+trajectory is genuinely *invariant* to it. So I tested it directly, as a correctness check.
 
 **Setup.** `equiv_mb1` (`1×8`) vs `equiv_mb8` (`8×1`), **identical `--seed 42`** → identical data
 order (the `DistributedSampler` permutation is seed-determined and batch-size-independent, so both
@@ -258,14 +258,14 @@ steps, no profiler, comparing the step-token-weighted mean loss.
 
 **Max absolute diff 0.0022; max relative diff 0.53% over 30 steps** (typical step ~0.1–0.2%).
 
-**Interpretation.** The residual is **pure floating-point non-associativity, not a bug.** With
+**Interpretation.** The residual is pure floating-point non-associativity, not a bug. With
 attention dropout = 0 (verified in the config) the forward pass is deterministic, so the *only*
 difference between `mb1` and `mb8` is arithmetic order: `mb1` runs `[1, seq, d]` GEMMs while `mb8`
 runs `[8, seq, d]` GEMMs, so cuBLAS picks different kernels/tiling → different summation order →
-tiny logit deltas (plus fp32 reduce-scatter order). These stay **bounded under ~0.5%** rather than
+tiny logit deltas (plus fp32 reduce-scatter order). These stay bounded under ~0.5% rather than
 exploding — the signature of numerical noise. A real accumulation bug (a missing `1/grad_accum`, a
-broken gradient sync) would produce an **~8× gradient** and order-of-magnitude divergence within a
-step or two. So the check **validates the accumulation + reduce-scatter path** *and* establishes the
+broken gradient sync) would produce an ~8× gradient and order-of-magnitude divergence within a
+step or two. So the check validates the accumulation + reduce-scatter path *and* establishes the
 takeaway:
 
 > At fixed effective batch with correct token-weighted accumulation, **`micro_bsz` is a systems
@@ -275,32 +275,7 @@ takeaway:
 
 ---
 
-## 6. Concepts in brief (for the non-specialist reader)
-
-**ZeRO-3 / FSDP `FULL_SHARD`.** Data-parallel training normally replicates the full model,
-gradients, and optimizer state on *every* GPU. ZeRO-3 instead **shards all three** across ranks:
-each GPU permanently holds only its `1/N` slice. To run a layer, ranks **all-gather** the full
-parameters just-in-time, compute, then discard the gathered copy; in the backward pass they
-**reduce-scatter** gradients so each rank ends up with only its slice. This is what makes a model
-that doesn't fit on one GPU fit across many — at the cost of the all-gather / reduce-scatter traffic
-that this report profiles.
-
-**Gradient accumulation.** Run several small **micro-batches** through forward+backward *without*
-stepping the optimizer, letting `.grad` pile up; step once after `grad_accum` of them. Because
-gradients are additive, `N` micro-batches of size `M` ≈ one batch of size `N·M` — a large
-*effective* batch under a memory ceiling. **Effective batch = `micro_bsz × grad_accum × world_size`**
-(held at 16 here).
-
-**`no_sync`.** In data-parallel training the per-GPU gradients must be combined before the optimizer
-step (**DDP: all-reduce; FSDP: reduce-scatter**). By default that collective fires inside *every*
-backward — but with accumulation you only need it *once* per optimizer step. `no_sync()` skips it on
-the non-final micro-batches and accumulates locally, so reduce-scatter rounds drop by `grad_accum`×.
-The trade-off: while accumulating un-synced, FSDP can't scatter the gradients, so each rank
-temporarily holds the **full unsharded gradient** → more memory.
-
----
-
-## 7. What I'd do next
+## 6. What I'd do next
 
 - **Push `micro_bsz` further** until compute fully saturates or the cross-NUMA floor dominates —
   activations stay cheap under checkpointing, so there's headroom on memory.
@@ -311,67 +286,4 @@ temporarily holds the **full unsharded gradient** → more memory.
   generation **+** syncing *sharded* weights back into the sampler. The natural next artifact.
 - **CPU offload** as a last resort for even larger models (slow over PCIe, but unlocks scale).
 
----
 
-## 8. What this demonstrates
-
-- **Memory accounting for mixed-precision training** — deriving the 16 B/param recipe, and knowing
-  that loading in fp32 (not bf16) is what forces the fp32 master + fp32 Adam moments that overflow the card.
-- **FSDP / ZeRO-3 internals** — sharding params/grads/optimizer, transformer auto-wrap, backward
-  prefetch, the mixed-precision policy (bf16 compute, fp32 reduction), and FSDP-aware gradient clipping.
-- **Performance profiling** — `torch.profiler`, a custom trace analyzer that separates *hidden* from
-  *exposed* communication via interval-union math, and the discipline to align the profiling window
-  to the thing being measured.
-- **Systems reasoning** — diagnosing a communication bottleneck, understanding *why* two knobs both
-  help (and why they're redundant past a point), and reading the bottleneck *shift* after a fix.
-- **Correctness rigor** — a fixed-seed control that distinguishes floating-point noise from an
-  accumulation bug, and the precision (token-weighted loss) needed to make the comparison meaningful.
-- **Honest scoping** — building the *smallest* setup that genuinely requires the technique, and being
-  explicit about what the artifact does and does not claim.
-
----
-
-## 9. Reproduction
-
-```bash
-# CPU smoke test (FSDP refuses CPU, so this validates the loop via a DDP fallback):
-torchrun --standalone --nproc_per_node 2 \
-    scripts/PGPS9K/9_train_sft_fsdp.py --smoke --steps 20
-
-# 1-GPU OOM demonstration (the "why shard" evidence — OOMs inside optim.step()):
-python -m torch.distributed.run --standalone --nproc_per_node 1 \
-    scripts/PGPS9K/9_train_sft_fsdp.py --steps 2 --no_save
-
-# 2-GPU real run, profiled:
-HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_ENABLE_HF_TRANSFER=0 \
-python -m torch.distributed.run --standalone --nproc_per_node 2 \
-    scripts/PGPS9K/9_train_sft_fsdp.py \
-    --model_id Qwen/Qwen2.5-VL-7B-Instruct \
-    --output_dir outputs/PGPS9K/sft7b_fsdp \
-    --micro_bsz 8 --grad_accum 1 --steps 20 --no_save --profile --peak_tflops 503.8
-    # add --no_sync to defer reduce-scatter when grad_accum > 1
-
-# Analyze the comms breakdown (compute vs hidden vs exposed) from the trace:
-python scripts/PGPS9K/analyze_fsdp_trace.py outputs/PGPS9K/sft7b_fsdp/trace
-
-# Measure the card's achievable bf16 TFLOPs (feeds --peak_tflops):
-python scripts/PGPS9K/measure_peak_tflops.py
-
-# Fixed-seed micro-batch-invariance check (Section 5), token-weighted accumulation:
-python -m torch.distributed.run --standalone --nproc_per_node 2 \
-    scripts/PGPS9K/9_train_sft_fsdp.py --micro_bsz 1 --grad_accum 8 \
-    --token_weighted_loss --loss_norm 4096 --seed 42 --steps 30 --no_save
-```
-
-**Key files (in this repository):**
-
-- `scripts/PGPS9K/9_train_sft_fsdp.py` — the FSDP training script (wrap, mixed precision, prefetch,
-  activation checkpointing, `no_sync`, token-weighted accumulation, MFU reporting, checkpoint gather).
-- `scripts/PGPS9K/analyze_fsdp_trace.py` — the chrome-trace analyzer (compute vs hidden/exposed comms;
-  `--selftest` validates the interval math with no GPU).
-- `scripts/PGPS9K/measure_peak_tflops.py` — the achievable-bf16-GEMM probe behind `--peak_tflops`.
-
----
-
-*Hardware: 2× NVIDIA RTX PRO 6000 Blackwell (96 GB, no NVLink). Software: PyTorch 2.9.0+cu128.
-All numbers are from hands-on runs, June 2026.*
