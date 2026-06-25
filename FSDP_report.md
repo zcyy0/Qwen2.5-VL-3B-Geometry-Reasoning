@@ -22,10 +22,10 @@
   optimizer state — ~112 GB, which overflows a single 96 GB card. I reproduced the exact
   failure: the run fills the card to 94.8 GB and then dies *inside the optimizer step* allocating
   Adam's first moment. This is the concrete reason sharding is *required*, not optional.
-- **FSDP `FULL_SHARD` (ZeRO-3)** across 2 GPUs shards parameters, gradients, **and** optimizer
-  state, bringing peak memory to **~75 GB/GPU** — the model that OOM'd now trains with headroom.
-- Profiling shows the run is **communication-bound**: at the naïve configuration **over 70% of
-  step time is *exposed* communication** — the GPU stalling on all-gather / reduce-scatter over a
+- FSDP `FULL_SHARD` (ZeRO-3) across 2 GPUs shards parameters, gradients, **and** optimizer
+  state, bringing peak memory to ~75 GB/GPU — the model that OOM'd now trains with headroom.
+- Profiling shows the run is communication-bound: at the naïve configuration over 70% of
+  step time is *exposed* communication — the GPU stalling on all-gather / reduce-scatter over a
   no-NVLink, cross-NUMA PCIe link.
 - I closed most of that gap with two well-understood levers, raising throughput **4.2×
   (690 → 2903 tok/s, MFU 3.1% → 13.1%)** and collapsing exposed comms from **70% to 18%**:
