@@ -2,11 +2,10 @@
 
 **A profiling-driven study of the communication bottleneck in ZeRO-3 sharded training.**
 
-> Full-parameter fine-tuning of **Qwen2.5-VL-7B** whose ~112 GB of training state *cannot* fit
-> on a single 96 GB GPU. I shard it across two GPUs with PyTorch **FSDP `FULL_SHARD` (ZeRO-3)**,
-> profile the result with `torch.profiler`, find it is **communication-bound** on a no-NVLink
-> PCIe link, and raise throughput **4.2×** by attacking the right collective with the right knob —
-> then prove with a fixed-seed control experiment that the speedup costs **nothing** in training quality.
+> Full-parameter fine-tuning of Qwen2.5-VL-7B whose ~112 GB of training state *cannot* fit
+> on a single 96 GB GPU. I shard it across two GPUs with PyTorch FSDP `FULL_SHARD` (ZeRO-3),
+> profile the result with `torch.profiler`, find it is communication-bound on a no-NVLink
+> PCIe link, and raise throughput **4.2×** — then prove with a fixed-seed control experiment that the speedup costs nothing in > training quality.
 
 | | |
 |---|---|
@@ -19,8 +18,8 @@
 
 ## TL;DR
 
-- A 7B full fine-tune in the standard mixed-precision layout needs **16 bytes/parameter** of
-  optimizer state — **~112 GB**, which **overflows a single 96 GB card**. I reproduced the exact
+- A 7B full fine-tune in the standard mixed-precision layout needs 16 bytes/parameter of
+  optimizer state — ~112 GB, which overflows a single 96 GB card. I reproduced the exact
   failure: the run fills the card to 94.8 GB and then dies *inside the optimizer step* allocating
   Adam's first moment. This is the concrete reason sharding is *required*, not optional.
 - **FSDP `FULL_SHARD` (ZeRO-3)** across 2 GPUs shards parameters, gradients, **and** optimizer
