@@ -277,13 +277,11 @@ takeaway:
 
 ## 6. What I'd do next
 
-- **Push `micro_bsz` further** until compute fully saturates or the cross-NUMA floor dominates —
+- Push `micro_bsz` further until compute fully saturates or the cross-NUMA floor dominates —
   activations stay cheap under checkpointing, so there's headroom on memory.
-- **FSDP2 (`fully_shard`)** — the newer per-parameter-sharding API; same concepts, cleaner ergonomics.
-- **`sync_module_states` + meta-device init** to avoid every rank holding a full CPU copy of the
+- FSDP2 (`fully_shard`) — the newer per-parameter-sharding API.
+- `sync_module_states` + meta-device init to avoid every rank holding a full CPU copy of the
   weights at load time (the fp32 7B currently loads slowly off a network volume).
-- **GRPO + FSDP** — the harder, research-adjacent version: FSDP training **+** distributed
-  generation **+** syncing *sharded* weights back into the sampler. The natural next artifact.
-- **CPU offload** as a last resort for even larger models (slow over PCIe, but unlocks scale).
+- GRPO + FSDP
 
 
