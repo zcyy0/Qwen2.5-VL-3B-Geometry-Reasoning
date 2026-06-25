@@ -126,54 +126,54 @@ OOM'd on one card now trains with ~20 GB of headroom. ✅
 
 ### How I measured it
 
-I profiled with `torch.profiler` and wrote a small **chrome-trace analyzer** that classifies every
-on-device kernel as **compute** or **communication** (NCCL collectives, by kernel-name tokens —
-`allgather` / `reducescatter`), then uses **interval-union math** to split communication into:
+I profiled with `torch.profiler` and wrote a small chrome-trace analyzer that classifies every
+on-device kernel as compute or communication (NCCL collectives, by kernel-name tokens —
+`allgather` / `reducescatter`), then uses interval-union math to split communication into:
 
-- **hidden comms** — overlapped with compute (i.e. `backward_prefetch` is working), and
-- **exposed comms** — comms during which the GPU has *no* compute to do, so it stalls.
+- hidden comms — overlapped with compute (i.e. `backward_prefetch` is working), and
+- exposed comms — comms during which the GPU has *no* compute to do, so it stalls.
 
-**Exposed-comms % of the step is the headline diagnostic**: it is the fraction of wall-clock the
+Exposed-comms % of the step is the headline diagnostic: it is the fraction of wall-clock the
 GPU spends waiting on the PCIe / cross-NUMA link with nothing else to do. The analyzer is
 stdlib-only and ships with a `--selftest` that validates the interval math on a synthetic trace.
 
-> **A note on profiling rigor.** Exposed-comms % is **window-dependent** — it changes with which
+> A note on profiling rigor. Exposed-comms % is window-dependent — it changes with which
 > micro-batches the profiler captures. Because `no_sync` defers its reduce-scatter to the *last*
 > micro-batch of an accumulation window, a fair measurement requires the profiled window to span a
 > whole accumulation cycle. All comms-breakdown numbers in this report are measured over such an
-> **accumulation-aligned window** (the profiler schedule is CLI-configurable for exactly this
+> accumulation-aligned window (the profiler schedule is CLI-configurable for exactly this
 > reason), so they are internally comparable across every configuration below.
 
 ### MFU, and what "good" looks like on this card
 
-I report **MFU at the useful 6N FLOPs/token** (2N forward + 4N backward). With activation
+I report MFU at the useful 6N FLOPs/token (2N forward + 4N backward). With activation
 checkpointing the hardware actually does ~8N (the extra forward in the backward pass) — that's HFU;
 I report the stricter 6N number on purpose ("how much of peak goes to *useful* work").
 
-The card's *achievable* bf16 GEMM (fp32-accumulate, the training path) measures **~401 TFLOPs/GPU**,
-about **80%** of the theoretical dense **503.8 TFLOPs** (NVIDIA's marketed "1 PFLOP BF16" is the
+The card's *achievable* bf16 GEMM (fp32-accumulate, the training path) measures ~401 TFLOPs/GPU,
+about 80% of the theoretical dense 503.8 TFLOPs (NVIDIA's marketed "1 PFLOP BF16" is the
 2:4-*sparse* number; dense is half). MFU here is reported against the 503.8 theoretical, so even a
-*perfectly* comms-hidden loop tops out near **~80% MFU** on this hardware. That sets the scale: the
+*perfectly* comms-hidden loop tops out near ~80% MFU on this hardware. That sets the scale: the
 question isn't "why not 100%," it's "how much of the comms gap can I close."
 
 ---
 
-## 4. Closing the gap — two levers, one bottleneck
+## 4. Closing the gap
 
-**Every run below holds the effective batch fixed at 16** (`micro_bsz × grad_accum × world_size`),
+Every run below holds the effective batch fixed at 16 (`micro_bsz × grad_accum × world_size`),
 so these are pure *systems* comparisons — same optimization math, different execution.
 
 | config (`micro_bsz × grad_accum`) | `no_sync` | tok/s | MFU | peak mem | compute % | comms % | **exposed %** | overlap % |
 |---|---|---|---|---|---|---|---|---|
 | `1 × 8` (baseline) | off | 690 | 3.1% | 75.5 GB | 24.0% | 81.6% | **70.3%** | 13.9% |
-| `1 × 8` | **on** | 1126 | 5.1% | 75.5 GB | 31.3% | 72.1% | **56.9%** | 21.2% |
+| `1 × 8` | on | 1126 | 5.1% | 75.5 GB | 31.3% | 72.1% | **56.9%** | 21.2% |
 | `4 × 2` | off | 2040 | 9.2% | 83.9 GB | 46.2% | 69.2% | **42.9%** | 38.0% |
-| `8 × 1` | off | **2903** | **13.1%** | 83.8 GB | 63.0% | 54.1% | **18.4%** | 65.9% |
+| `8 × 1` | off | 2903 | 13.1% | 83.8 GB | 63.0% | 54.1% | **18.4%** | 65.9% |
 | `4 × 2` | on | 2383 | 10.8% | 83.9 GB | 50.8% | 62.3% | **34.1%** | 45.2% |
 
 ### Lever 1 — bigger micro-batches amortize *and* hide the collectives
 
-The FSDP collectives are a roughly **fixed cost per micro-batch**: the same parameters get
+The FSDP collectives are a roughly fixed cost per micro-batch: the same parameters get
 all-gathered and reduce-scattered regardless of how many tokens flow through (the all-gather kernel
 count and absolute time are nearly identical across micro-batch sizes — ~57 all-gathers/micro-batch
 either way). So doubling tokens-per-micro-batch does two things at once:
@@ -184,7 +184,7 @@ either way). So doubling tokens-per-micro-batch does two things at once:
 Both show up in the trace: as `micro_bsz` goes 1 → 2 → 4 → 8, **compute rises 24% → 33% → 46% →
 63%**, **overlap rises 14% → 24% → 38% → 66%**, and **exposed comms collapses 70% → 56% → 43% →
 18%**. By `micro_bsz=8` the run is **approaching compute-bound** — the no-NVLink comms is now mostly
-*hidden*, not eliminated. And it's nearly free on memory: peak climbs only **75.5 → ~84 GB** across
+*hidden*, not eliminated. And it's nearly free on memory: peak climbs only 75.5 → ~84 GB across
 the whole sweep, because activations stay cheap under checkpointing.
 
 **Net: 690 → 2903 tok/s = 4.2×**, MFU **3.1% → 13.1%**, with mild diminishing returns per doubling
@@ -192,10 +192,10 @@ the whole sweep, because activations stay cheap under checkpointing.
 
 ### Lever 2 — `no_sync` removes redundant reduce-scatter rounds
 
-By default FSDP fires its gradient **reduce-scatter inside every `backward()`**. Under gradient
-accumulation that is wasteful: you only need the combined gradient **once per optimizer step**, not
+By default FSDP fires its gradient reduce-scatter inside every `backward()`. Under gradient
+accumulation that is wasteful: you only need the combined gradient once per optimizer step, not
 `grad_accum` times. `no_sync()` is a context manager that says *"don't run the gradient collective
-this backward — accumulate locally"*; you wrap every micro-batch **except the last**.
+this backward — accumulate locally"*; you wrap every micro-batch except the last.
 
 Apples-to-apples at the same `1×8` config and the same profiler window:
 
@@ -205,16 +205,16 @@ Apples-to-apples at the same `1×8` config and the same profiler window:
 | **`no_sync`** (defer to last micro-batch) | **1126** | 5.1% | **58 (8.0× fewer)** | **1.5 s (8.0×)** | 56.9% | 75.5 GB |
 
 - **Reduce-scatter rounds drop exactly 8× — and so does RS time** (12.3 s → 1.5 s): precisely the
-  `grad_accum=8` amortization (8 RS rounds/step → 1). **All-gather is untouched** (912 → 912):
+  `grad_accum=8` amortization (8 RS rounds/step → 1). All-gather is untouched (912 → 912):
   `no_sync` defers only the *gradient* collective, not the parameter all-gather.
-- **+63% throughput** (690 → 1126), exposed comms 70.3% → 56.9%.
-- **The textbook cost of `no_sync` did not bite here.** While accumulating without syncing, each
-  rank holds the **full, unsharded gradient** instead of its 1/world shard — normally a memory hit.
-  At bf16 that's ~7.5 GB extra, comfortably absorbed by the ~20 GB headroom; **peak memory was
-  essentially unchanged (75.5 GB)**. Knowing *when* a documented trade-off actually materializes is
+- +63% throughput (690 → 1126), exposed comms 70.3% → 56.9%.
+- While accumulating without syncing, each
+  rank holds the full, unsharded gradient instead of its 1/world shard — normally a memory hit.
+  At bf16 that's ~7.5 GB extra, comfortably absorbed by the ~20 GB headroom; peak memory was
+  essentially unchanged (75.5 GB). Knowing *when* a documented trade-off actually materializes is
   half the skill.
-- **The bottleneck then shifts:** once RS is cheap, **parameter all-gather becomes the dominant
-  comms** — which is exactly what Lever 1 attacks.
+- once RS is cheap, parameter all-gather becomes the dominant
+  comms — which is exactly what Lever 1 attacks.
 
 ### The insight that ties them together
 
