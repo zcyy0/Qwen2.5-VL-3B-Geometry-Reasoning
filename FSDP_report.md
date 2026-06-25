@@ -83,20 +83,20 @@ Running on a single GPU (where FSDP degrades to `NO_SHARD`), the fp32 master wei
 
 ---
 
-## 2. Sharding it — FSDP `FULL_SHARD` (ZeRO-3)
+## 2. FSDP `FULL_SHARD` (ZeRO-3)
 
-### Design decisions (and the alternative I rejected for each)
+### Design decisions
 
 | decision | why | alternative rejected |
 |---|---|---|
-| **SFT, not GRPO** | Isolates the distributed-*training* lesson cleanly. | GRPO+FSDP stacks three hard things — FSDP training + distributed generation + syncing *sharded* weights back into the sampler. Out of scope (understood conceptually, not built). |
-| **7B, not 3B** | A 7B full fine-tune (~112 GB) genuinely overflows one card. | A 3B full fine-tune (~48 GB) **fits on one 96 GB card**, so sharding would be contrived theatre. |
-| **2 GPUs, not 3–4** | `112 GB / 2 ≈ 56 GB/GPU` of persistent state fits a 96 GB card with activation checkpointing + frozen vision. | More GPUs only buy comfort; the first size that *needs* 3 is ~13B (~208 GB). |
-| **No-NVLink box** | Makes comms a *visible* fraction of step time — which is what makes the profiling story real. | An NVLink box would hide the bottleneck and make `backward_prefetch` look free. |
+| SFT, not GRPO | Isolates the distributed-training lesson cleanly. | GRPO+FSDP stacks three hard things — FSDP training + distributed generation + syncing *sharded* weights back into the sampler. Out of scope (understood conceptually, not built). |
+| 7B, not 3B | A 7B full fine-tune (~112 GB) genuinely overflows one card. | A 3B full fine-tune (~48 GB) fits on one 96 GB card, so sharding would be contrived theatre. |
+| 2 GPUs, not 3–4 | `112 GB / 2 ≈ 56 GB/GPU` of persistent state fits a 96 GB card with activation checkpointing + frozen vision. | More GPUs only buy comfort; the first size that *needs* 3 is ~13B (~208 GB). |
+| No-NVLink box | Makes comms a visible fraction of step time — which is what makes the profiling story real. | An NVLink box would hide the bottleneck and make `backward_prefetch` look free. |
 
-### The wrap (the heart of the artifact)
+### The wrap
 
-I used the classic **FSDP1 API** (`FullyShardedDataParallel`) deliberately — it is the most
+I used the classic FSDP1 API (`FullyShardedDataParallel`) deliberately — it is the most
 documented and the concepts (`FULL_SHARD`, auto-wrap, prefetch, mixed-precision policy) are
 identical to FSDP2's `fully_shard`.
 
@@ -113,17 +113,12 @@ identical to FSDP2's `fully_shard`.
   recompute activations in the backward pass instead of storing them, trading ~30% extra compute
   for a large activation-memory saving.
 
-Gradient clipping uses FSDP's own `model.clip_grad_norm_`, which **all-reduces the norm across
-shards** (a plain `torch.nn.utils.clip_grad_norm_` would clip each rank's shard independently and
+Gradient clipping uses FSDP's own `model.clip_grad_norm_`, which all-reduces the norm across
+shards (a plain `torch.nn.utils.clip_grad_norm_` would clip each rank's shard independently and
 get the global norm wrong).
 
-**Result:** sharding ~112 GB of state across 2 cards lands at **peak ~75 GB/GPU** — the model that
+Result: sharding ~112 GB of state across 2 cards lands at peak ~75 GB/GPU — the model that
 OOM'd on one card now trains with ~20 GB of headroom. ✅
-
-> A bug worth recording: with activation checkpointing on, a non-reentrant `CheckpointError` fired
-> ("a different number of tensors was saved during forward (40) vs recompute (38)") because the KV
-> cache made the decoder layer save a different tensor count on recompute. HF's `Trainer` disables
-> the cache automatically; my hand-rolled loop had to set `model.config.use_cache = False` explicitly.
 
 ---
 
