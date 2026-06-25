@@ -18,4 +18,7 @@ The final pipeline improved Qwen2.5-VL-3B-Instruct from 22.4% to 30.69% accuracy
 
 The main finding is that the model’s largest bottleneck is object-theorem binding, not merely theorem recall. Oracle ablations showed that providing object-theorem bindings produced the largest accuracy jump. GRPO was effective on easy and medium curriculum buckets, where the model had mixed correct and incorrect rollouts, but plateaued on harder buckets. DPO was more effective after GRPO because it directly used high-k sampled HardA rollouts to teach the model to prefer correct geometry trajectories over plausible but incorrect ones.
 
-The detailed project report is in the project_report.md file
+Reports:
+- The detailed report is in the project_report.md file
+- I also trained 7B model on 2 GPUs using FSDP Zero3 to study distributed training. The full report and the profiling details are in the FSDP_report.md file 
+
