@@ -10,7 +10,7 @@
 | | |
 |---|---|
 | **Stack** | PyTorch 2.9 (`+cu128`), FSDP1 `FullyShardedDataParallel`, `torch.profiler`, AdamW, activation checkpointing |
-| **Hardware** | 2× NVIDIA RTX PRO 6000 Blackwell, 96 GB each, **no NVLink**, two NUMA nodes (GPU↔GPU over PCIe) |
+| **Hardware** | 2× NVIDIA RTX PRO 6000 Blackwell, 96 GB each, no NVLink, two NUMA nodes (GPU↔GPU over PCIe) |
 | **Model** | Qwen2.5-VL-7B-Instruct, full-parameter SFT, frozen vision tower |
 | **Headline** | OOM on 1 GPU → 75 GB/GPU on 2 · 690 → 2903 tok/s (4.2×) · MFU 3.1% → 13.1% · exposed comms 70% → 18% |
 
@@ -55,21 +55,7 @@ Exposed communication % (GPU stalled on PCIe collectives) — collapses as compu
 
 ---
 
-## Why this exists
-
-This is a **systems / distributed-training artifact**, built deliberately as the smallest
-*non-contrived* demonstration that actually **requires** model sharding — and profiled deeply
-enough to say something concrete about *where* the time goes and *how* I got it back.
-
-It is a side track to a research project (Qwen2.5-VL-3B SFT + GRPO/DPO on geometry problems). The
-algorithm work produced a tuned champion; this artifact answers the orthogonal question — *"and I
-can scale it"* — with first-hand FSDP, profiling, and comms-optimization experience rather than a
-framework one-liner.
-
-**Scope, stated honestly.** The goal here is distributed-training mechanics, not a task-accuracy
-result. I picked a different, larger model than the research champion precisely *because* 7B is the
-size that stops fitting on one card — so there is **no accuracy comparison** in this report, and
-none is owed: fairness matters for *algorithm* claims, and this is a *systems* claim. Where I made
+**Scope** The goal here is distributed-training mechanics, not a task-accuracy result. I picked a different, larger model than the research champion precisely because 7B is the size that stops fitting on one card — so there is **no accuracy comparison** in this report, and none is owed: fairness matters for algorithm claims, and this is a systems claim. Where I made
 a design choice, I state the alternative I rejected and why.
 
 ---
