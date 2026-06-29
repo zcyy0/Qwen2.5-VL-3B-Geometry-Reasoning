@@ -690,6 +690,23 @@ Based on prior diagnostics, we want to ask two questions:
 1. **DPO instead of GRPO:** is preference learning a better use of the Hard A bucket than GRPO?
 2. **Quality-gating:** if we reinforce only the reasoning-valid correct rollouts (not flukes), does that escape redistribution?
 
+The experiment uses GRPO-medium checkpoint to generate 16 rollouts on all 1586 Hard A problems (temp 0.6, seed 42). Then use Claude Opus-4.8 as LLM judge to grade every clean rollout (capped at 6 response per problem) as valid** (sound derivation), fluke (right number, unsound chain) or unclear. The valid rate is 43.5%, fluke rate 56.2%.
+
+We want to construct two versions of preference pairs:
+- rollout with correct answer vs. rollout with incorrect answer. This is vanilla DPO preference pair
+- rollout with correct answer and correct reasoning vs. rollout with correct answer but unsound reasoning
+
+### Preference pair construction: 
+```
+1586   all 3A problems
+ −297   no clean strict-format CORRECT rollout (296 are 0/16 "dead residue")
+ ─────
+ 1289   ≥1 clean strict-format correct rollout      ← VANILLA pool
+ −559   "all-fluke": correct rollouts exist but EVERY judged one is unsound
+ ─────
+  730   ≥1 reasoning-VALID correct rollout           ← GATED pool
+```
+The 559-problem gap is the substantive cost of gating: there is no valid `chosen` to learn from, so gated DPO drops them. 
 
 
 
