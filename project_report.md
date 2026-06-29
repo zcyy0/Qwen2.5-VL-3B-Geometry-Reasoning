@@ -708,5 +708,13 @@ We want to construct two versions of preference pairs:
 ```
 The 559-problem gap is the substantive cost of gating: there is no valid `chosen` to learn from, so gated DPO drops them. 
 
+### Experiment results
+Both vanilla DPO and gated used the same training schedule: LoRA r=32/α=64 (LM + vision-MLP + merger); LR = 2e-6, 3 epochs, β= 0.1. 
+| Model | Val | Δ vs GRPO-medium val (CI95) | Test | Δ vs GRPO-medium test (CI95) |
+|---|---|---|---|---|
+| GRPO-medium | 25.88% | — | 29.10% | — |
+| GRPO-hard A | 26.07% | +0.19 [−2.9,+3.5] | 29.29% | +0.20 [−2.2,+2.6] |
+| vanilla DPO | 26.65% | +0.78 [−2.1,+3.7] | 29.00% | −0.10 [−2.2,+2.0] |
+| gated DPO | 25.29% | −0.58 [−2.9,+1.8] | 29.29% | +0.20 [−1.6,+1.9] |
 
-
+So neither vanilla DPO or gated DPO produces significant results. 
