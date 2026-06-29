@@ -693,8 +693,8 @@ Based on prior diagnostics, we want to ask two questions:
 The experiment uses GRPO-medium checkpoint to generate 16 rollouts on all 1586 Hard A problems (temp 0.6, seed 42). Then use Claude Opus-4.8 as LLM judge to grade every clean rollout (capped at 6 response per problem) as valid** (sound derivation), fluke (right number, unsound chain) or unclear. The valid rate is 43.5%, fluke rate 56.2%.
 
 We want to construct two versions of preference pairs:
-- rollout with correct answer vs. rollout with incorrect answer. This is vanilla DPO preference pair
-- rollout with correct answer and correct reasoning vs. rollout with correct answer but unsound reasoning
+- Vanilla DPO: rollout with correct answer vs. rollout with incorrect answer. 
+- Quality-gated DPO: rollout with correct answer and correct reasoning vs. rollout with correct answer but unsound reasoning
 
 ### Preference pair construction: 
 ```
