@@ -12,12 +12,12 @@ I built a full training and evaluation pipeline using:
 The baseline Qwen2.5-VL-3B-Instruct model achieved:
 | Split | Accuracy | Parse success rate |
 |---|---|---|
-| Validation | 22.2% |83.5%|
-| Test| 22.4% |83.8%|
+| Validation | 20.0% |83.5%|
+| Test| 21.4% |83.8%|
 
-The final pipeline improved Qwen2.5-VL-3B-Instruct from 22.4% to 30.69% accuracy on the 1,007-problem CASIA-PGPS9K held-out test set, a +8.29 percentage-point gain corresponding to roughly 83 additional solved problems. The pipeline first used curriculum GRPO, which improved test accuracy to 28.9%, then applied vanilla DPO on HardA rollout pairs to further improve accuracy to 30.69%.
+The final pipeline improved Qwen2.5-VL-3B-Instruct from 21.4% to 29.3% accuracy on the 1,007-problem CASIA-PGPS9K held-out test set, a +7.9 percentage-point gain corresponding to roughly 80 additional solved problems. 
 
-The main finding is that the model’s largest bottleneck is object-theorem binding, not merely theorem recall. Oracle ablations showed that providing object-theorem bindings produced the largest accuracy jump. GRPO was effective on easy and medium curriculum buckets, where the model had mixed correct and incorrect rollouts, but plateaued on harder buckets. DPO was more effective after GRPO because it directly used high-k sampled HardA rollouts to teach the model to prefer correct geometry trajectories over plausible but incorrect ones.
+The main finding is that the model’s largest bottleneck is object-theorem binding, not merely theorem recall. Oracle ablations showed that providing object-theorem bindings produced the largest accuracy jump. GRPO was effective on easy and medium curriculum buckets, but on harder buckets GRPO mostly results in redistribution rather than improving problem solving capability. DPO has similar performance as GRPO on the harder problems.
 
 ## 2. Dataset and Evaluation Setup
 ### Dataset
