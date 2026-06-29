@@ -618,8 +618,7 @@ The results from GRPO-HardA seems off -- the accuracy on validation dataset bare
 |---|---|---|---|
 | A | Training-curve audit | Is the run learning, or just moving? | log (reward, KL, entropy, accuracy, length) |
 | B | Per-prompt success-rate histogram, before vs after | Did the *set* of solvable problems grow or churn? | K=16 rollouts under GRPO-medium checkpoint and GRPO-hardA checkpoint, 500 problems |
-| C | Reward-hacking check | Is reward rising via gaming the grounding term? | 38 logged rollout samples with reward decomposition |
-| D | Reasoning-validity ("fluke") audit | Are "correct" answers actually reasoned correctly? | LLM judge (Opus 4.8) on 154 correct rollouts |
+| C | Reasoning-validity ("fluke") audit | Are "correct" answers actually reasoned correctly? | LLM judge (Opus 4.8) on 154 correct rollouts |
 
 #### Finding 1: The policy moved, but it didn't improve. 
 | metric (start → end) | value | reading |
@@ -633,7 +632,59 @@ The results from GRPO-HardA seems off -- the accuracy on validation dataset bare
 The tell-tale combination: **KL grew 4× (the weights changed meaningfully) while neither reward nor even *sampled* training accuracy improved.** So this isn't "trained at sampling temperature but failed to transfer to greedy decoding" — there was little sampled-temp gain to transfer in the first place. The optimizer moved the policy without making it better.
 
 #### Finding 2: Redistribution visualized
+For 500 problems I estimated each problem's per-sample success probability `p` (fraction of 16 samples correct) under the model GRPO-medium checkpoint (before) and GRPO-HardA checkpoint (after), and compared the distributions.
 
+```
+           meanP(pass@1)   pass@16    "dead" (p=0)
+  before   0.197         0.822      89  (17.8%)
+  after    0.243         0.808      96  (19.2%)
+```
 
+**Paired transitions across the 500 problems:**
+
+| newly solvable (0→>0) | lost (>0→0) | net solvable-set change | p increased | p decreased |
+|---|---|---|---|---|
+| **46** | **53** | **−7** | 233 | 159 |
+
+~100 of 500 problems flipped solvable-status — for a **net of −7**. That is the signature
+of **redistribution**: heavy churn, no net addition. (Both distributions are also bimodal:
+a large spike of near-unsolvable problems plus a thin tail — a **~20% "dead residue"**
+that's wrong on all 16 samples and therefore produces no learning signal at all.)
+
+#### Finding 3: "Correct" ≠ "reasoned correctly": the fluke audit
+If RL is reinforcing correct answers but not gaining capability, *what is it reinforcing?*
+Hypothesis: on hard problems, the rare correct answers are **flukes** — right number,
+broken reasoning — so RL reinforces noise. To test it I had a strong LLM judge (Opus 4.8,
+with the diagram, question, gold answer, and the model's chain) grade **only the reasoning**
+of correct rollouts, stratified by how reliably the model solves each problem.
+
+| stratum (correct out of 16) | n | valid reasoning | fluke | **fluke rate** |
+|---|---|---|---|---|
+| lucky (1–3) | 56 | 26 | 30 | **53.6%** |
+| mid (4–11) | 50 | 21 | 29 | **58.0%** |
+| reliable (12–16) | 48 | 19 | 29 | **60.4%** |
+
+**The original hypothesis was refuted** — fluke rate is *flat* (~54–60%, statistically
+indistinguishable at n≈50), not concentrated in the rare-correct cases. But the refutation
+surfaced something more important:
+
+> **~57% of *all* correct answers on these problems are reached by unsound reasoning —
+> even on problems the model solves 12–16 times out of 16.** Reliability ≠ understanding.
+
+The model reliably reaches right answers via **stable wrong shortcuts**. The judge's own
+examples make it concrete (it was validated to flag logic errors while forgiving cosmetic
+mislabels; mean confidence 0.87 valid / 0.79 fluke):
+
+- *"applies 180−inscribed instead of 2×inscribed, getting 120° only because 2×60 = 180−60 =
+  120 by coincidence"*
+- *(on a 13/16-reliable problem)* *"claims angle1 = angle3 as opposite angles, but these
+  are false… the answer is right by coincidence of flawed reasoning."*
+
+#### What the findings suggest
+The diagnosis reframes the goal from "tune RL harder" to "fix the training signal so it rewards reasoning, not just answers," plus harvest capability the model already has. The natural next step is either process-reward or quality-gated preference learning (DPO) to teach the model to use sound reasoning. I chose to do DPO as the next step because it's cheaper.
+
+However, there is a hard ceiling: ~20% of the bucket (326/1,586 problems) is wrong on all 16 samples — zero gradient, unreachable by RL at any temperature. Genuinely new capability would need a larger model, tools (a solver), or distillation from a stronger teacher.
+
+## DPO
 
 
