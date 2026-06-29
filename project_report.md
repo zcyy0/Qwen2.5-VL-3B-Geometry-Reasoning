@@ -611,168 +611,29 @@ $$
 
 So the held-out test gain is likely real, although a paired gain/loss analysis would be a better test if per-example predictions are available.
 
-### K=8 vs K=16 GRPO Analysis
-I sampled 500 examples from HardA and measured pass@k:
-| Metric | Value |
-|---|---|
-|pass@8| 68.2%|
-|pass@16 | 82.2%|
-
-This suggested that the model has substantial latent ability: many HardA problems can be solved somewhere in the sampling tail.
-
-I then compared two GRPO-HardA runs:
-| Run | Validation Accuracy |
-|---|---|
-|K=8 GRPO| 27.2%|
-|K=16 GRPO | 26.7%|
-
-The difference is only about 0.5 percentage points, roughly 2–3 validation problems, so it is likely noise. However, the important result is that K=16 did not clearly improve over K=8 despite higher pass@16.
-
-During training, K=16 had approximately twice the KL of K=8, while reward was very similar.
-
-This suggests K=16 was less KL-efficient: it moved the model farther away from the reference policy without improving validation accuracy.
-
-Why higher pass@k did not guarantee better accuracy@1? pass@k measures whether a correct solution appears somewhere in the sampling tail. Accuracy@1 measures whether the model’s default output is correct. These are different objectives. A problem may look like this under K=16 sampling:
-```
-15 wrong rollouts
-1 correct rollout
-```
-pass@16 counts this as solved, but GRPO still has to turn a rare sampled correct trajectory into high-probability behavior. That is a difficult credit-assignment problem, especially in visual geometry. The extra K=16 correct rollouts may also include:
-```
-rare tail solutions
-lucky final answers
-partially incorrect reasoning with correct answer
-problem-type-specific strategies
-non-generalizable theorem applications
-```
-GRPO reinforces whatever receives reward, but it does not necessarily preserve broad geometry competence. 
-
 ### GRPO Analysis
-I sampled 500 problems from stage 3A training data. The model's pass@8 on the sample is 65%, and its pass@16 is around 82%. I ran two versions of stage 3A one using k=8 and the other using k=16. However, the accuracy of the k=16 run is not higher than the k=8 run. Although the model clearly has some latent ability and can find correct solutions in its sampling tail, but GRPO is not effectively moving those solutions into the default high-probability behavior. I compared the problem types in the validation data the k=8 checkpoint and k=16 checkpoints solved respectively, and found that k=16 improved some problems types but regressed on other types. That looks like strategy shifting, not uniform improvement. The k=16 checkpoint may have become better at certain theorem families while forgetting or destabilizing others. So the overall average barely moves. The training reinforces whatever wins in the sampled rollouts, but it does not necessarily preserve broad geometry competence.
+The results from GRPO-HardA seems off -- the accuracy on validation dataset barely moved compared to GRPO-medium, and the reward never trended up -- it hovered around ~0.22 for the whole run. Were these signs of a broken run, a bad reward, or something more fundamental? I did the following diagnosis:
 
-Stage 3B have more difficult problems than 3A, so it's expected that GRPO in stage 3B does not show improvement. Based on the findings from SFT and GRPO, I think a better way is to experiment on-policy ditillation: leverage the teacher model's ability in RL environment. 
+| # | Diagnostic | Question it answers | Source |
+|---|---|---|---|
+| A | Training-curve audit | Is the run learning, or just moving? | log (reward, KL, entropy, accuracy, length) |
+| B | Per-prompt success-rate histogram, before vs after | Did the *set* of solvable problems grow or churn? | K=16 rollouts under GRPO-medium checkpoint and GRPO-hardA checkpoint, 500 problems |
+| C | Reward-hacking check | Is reward rising via gaming the grounding term? | 38 logged rollout samples with reward decomposition |
+| D | Reasoning-validity ("fluke") audit | Are "correct" answers actually reasoned correctly? | LLM judge (Opus 4.8) on 154 correct rollouts |
 
-### Qualitative Examples
-1. Visual grounding improvement example
-> Question asks "EDCF is a rectangle. Find the length of EF." (Diagram labels CD = 8x − 13 and EF = 7x + 11.)  
-> ![](./assets/prob_4076.png)
+#### Finding 1: The policy moved, but it didn't improve. 
+| metric (start → end) | value | reading |
+|---|---|---|
+| reward | 0.211 → 0.225 (peak 0.319) | **flat / noisy** |
+| training accuracy (sampled) | ~16% → ~21%, mean 20.8%, noisy 13–27% | **flat at training temperature** |
+| KL divergence from init | 0.003 → 0.013 (4×) | **policy genuinely moved** |
+| entropy | 0.385 → 0.345 | mild collapse |
+| completion length | 251 → 222 tokens | no verbosity blow-up |
 
-Baseline:
+The tell-tale combination: **KL grew 4× (the weights changed meaningfully) while neither reward nor even *sampled* training accuracy improved.** So this isn't "trained at sampling temperature but failed to transfer to greedy decoding" — there was little sampled-temp gain to transfer in the first place. The optimizer moved the policy without making it better.
 
-> Since EDCF is a rectangle, opposite sides are equal. Therefore, EF is equal to CD. Given that CD = 8x − 13, we can conclude that EF = 8x − 13.
-
-The baseline only read one of the two side labels in the diagram and produced a symbolic answer instead of solving for x. It had the right theorem (opposite sides equal in a rectangle) but missed the second piece of visual information that the problem requires. 
-The GRPO checkpoint correctly reads both labels, set 8x−13 = 7x+11 → x = 24 → EF = 7(24)+11 = 179.   
-
-2. Theorem use improvement example
-> Question asks "Find TR if PQ = 12, QR = 2, and TS = 3"
-> ![](./assets/prob_8033.png)
-
-Baseline:
-> "Since TS is a tangent to the circle at point T, TS is perpendicular to the radius at T. Therefore, triangle TQS is a right triangle with TS = 3 and QS = 5. Using the Pythagorean theorem, we can find the length of QT: QT = √(QS² − TS²) = √(25 − 9) = √16 = 4.
-
-The baseline picked the wrong theorem family — used Pythagorean theorem on a constructed right triangle when the correct tool is the power-of-a-point / secant-segment theorem (PQ · PR = TS · TR). It knew "tangent ⊥ radius" but didn't connect to the secant-tangent length relationship. The GRPO checkpoint applied the correct power-of-a-point and solved TR = 7
-
-3. Object-theorem binding improvement example
-> Question asks "VWXY is a rhombus. Find angle WVZ if angle WVY = 4b+10 and angle XZW = 10b−5."
-> ![](./assets/prob_3141.png)
-
-Baseline:
-> The diagonals of a rhombus bisect each other at right angles. So, angle WVZ is half of angle WVY. We can use the given angles to find the value of b...
-
-The baseline invoked the diagonals-bisect-at-right-angles property, but incorrectly identified the object relationship and set the wrong equation 4b+10 = 10b−5. The GRPO set the correct equation 10b-5 = 90, and solved the problem with the right answer. 
-     
+#### Finding 2: Redistribution visualized
 
 
-### Per Problem Type Comparison
-| Problem Type | N| Baseline Accuracy |Best GRPO checkpoint| Delta Correct|
-|---|---|---|---|---|
-| Angle Bisector of Triangle |6| 0% |16.7%| +1|
-| Geometric Mean| 10| 0% | 10.0%| +1|
-| Polygon Angle| 11| 0% | 9.1%| +1|
-| Secant Angle  | 17|5.9% | 11.8%| +1|
-| Secant Segment   |15| 6.7% |20%| +2|
-| Circle Chord| 40| 7.5% |12.5%| +2|
-| Inscribed Angle| 20| 10% |10%| 0|
-| Median of Triangle| 14| 14.3% |7.1%| -1|
-| Similarity in Parallel Line| 13| 15.4% |30.8%| +2|
-| Tangent    | 12| 16.7% |33.3%| +2|
-| Perimeter and Area of Polygon| 6| 16.7% |50%| +2|
-| Rhombus and Square| 22| 18.2% |27.3%| +2|
-| Parallel Lines    | 32| 18.8% |31.2%| + 4|
-| Trapezoid and Kite| 28| 21.4% |17.9%|-1|
-|Perimeter and Area of Triangle|9| 22.2%|22.2%|0|
-| Line Segment  | 9| 22.2% |44.4%|+2|
-| Circumference and Area of Circle|34| 23.5% |29.4%| +2|
-| Polygon Congruence | 12| 25% | 16.7%| -1|
-| Pythagorean Theorem|8| 25% | 50%| +2|
-| Midsegment of Triangle| 15 | 26.7% |53.3%|+4|
-| Trigonometry| 32| 28.1% |25.0%| -1|
-| Angle Relation in Triangle| 14| 28.6% |28.6%| 0|
-| Isosceles (Equilateral) Triangle|19| 31.6% |21.1%| -2|
-| Polygon Similarity| 20| 35% |35%| 0|
-| Arc Angle |14| 35.7% |28.6%| -1|
-| Parallelogram| 24| 37.5% |33.3%|-1|
-| Rectangle | 8| 37.5% | 75| +3|
-| Angle| 18| 38.9% |44.4%| +1|
-| Perpendicular Bisector of Triangle| 5| 40% |40% | 0|
-| Perimeter and Area of Quadrangle| 27| 40.7% |40.7%| 0|  
 
-If we group problem types by baseline accuracy:
-| Baselind Accuracy Bucket | N| Baseline Correct |GRPO Correct| Baseline Acc|GRPO Acc|
-|---|---|---|---|---|---|
-|<20%|218| 24|43|11%|19.7%|
-|20–30%|161| 40| 47| 24.8%| 29.2%|
-|≥30%| 135| 50|50|37%|37%|
-
-Most of the improvement comes from types the baseline was bad at. So the GRPO checkpoint is not just getting better at already-easy categories. It is lifting some of the weaker categories. That supports the idea that curriculum GRPO improved harder or previously underperforming problem families.
-
-The most encouraging gains are in categories that require more explicit geometry relationships: parallel line relations, midsegment theorem, some circle/secant/tangent relations, some quadrilateral properties, some metric geometry. This lines up with the reward design, which encourages correct answers that mention visual facts and theorems.
-
-However, the model still does not solve the hardest theorem types robustly. Some categories improved from zero, but only by one problem, such as Angle Bisector of Triangle, Geometric Mean, Polygon Angle. This matches the earlier conclusion: GRPO is helping a bit, but it is not enough to teach the hardest missing geometry skills.
-
-The model regressed on 7 types. This is not catastrophic forgetting, because total regression is only -8 correct across all regressed types. But it does suggest strategy shifting: the GRPO checkpoint got better at some theorem families while slightly destabilizing others. This is consistent with what I observed in the K=8 vs K=16 experiment. GRPO reinforces whatever wins in sampled rollouts. That can improve some patterns but weaken others.
-
-
-## 6. Direct Preference Optimization
-After GRPO, I observed that the model had substantial latent ability on HardA problems: with high-k sampling, it could often generate at least one correct solution, but GRPO did not reliably move those correct tail samples into the model’s top-1 behavior.
-
-To directly target this pass@k-to-accuracy@1 gap, I ran a preference-optimization stage starting from the best GRPO checkpoint.
-
-### DPO Data Construction
-For each HardA training problem, I sampled 16 rollouts from the best GRPO checkpoint. For the chosen response, I selected a correct rollout with the highest combination of:
-
-```text
-visual fact recall
-theorem recall
-strict format
-no loop
-not hitting the max token limit
-```
-For the rejected response, I selected a hard negative satisfying:
-```
-incorrect final answer
-strict <think>...</think><answer>...</answer> format
-no loop
-does not hit max token limit
-```
-This rejected-response filter was designed to avoid trivial negatives such as malformed outputs or loops. The goal was to teach the model to prefer geometrically correct reasoning over plausible but incorrect reasoning, rather than merely learning format compliance.
-
-### DPO Experiment
-I compared two preference-optimization variants. Both variants have starting point from the best GRPO checkpoints, beta=0.1, learning rate=2e-6, epochs=3. The first variant is vanilla DPO, while the second variant is DPO + RPO/NLL. The vanilla DPO checkpoint achieved 30.69% test accuracy, improving over the best GRPO checkpoint’s 28.9% and the baseline model’s 22.4%.
-
-### DPO training dynamics
-| Reward Rejected | Reward Chosen|
-| :---: | :---: |
-| ![](./assets/dpo_rejected_reward.png) | ![](./assets/dpo_chosen_reward.png) | 
-
-| Margin | Accuracy |
-| :---: | :---: |
-| ![](./assets/dpo_margin.png) | ![](./assets/dpo_accuracy.png) |
-
-Although the chosen reward became slightly negative, the rejected reward decreased more, so the chosen-rejected margin increased. This suggests that vanilla DPO learned to prefer correct rollouts over incorrect hard negatives, but did so partly by pushing rejected responses down rather than strongly increasing the absolute likelihood of chosen responses.
-
-I also tried adding an NLL term on the chosen response through RPO with α = 0.1. This made the chosen reward positive, which addressed the training-diagnostic concern. However, it did not improve held-out test accuracy and underperformed vanilla DPO on the test set.
-
-This suggests that making the chosen implicit reward positive is not necessarily sufficient for better generalization. In this setting, vanilla DPO’s relative preference signal was more effective than adding a small supervised likelihood term to the chosen responses.
 
