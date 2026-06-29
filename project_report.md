@@ -686,5 +686,10 @@ The diagnosis reframes the goal from "tune RL harder" to "fix the training signa
 However, there is a hard ceiling: ~20% of the bucket (326/1,586 problems) is wrong on all 16 samples — zero gradient, unreachable by RL at any temperature. Genuinely new capability would need a larger model, tools (a solver), or distillation from a stronger teacher.
 
 ## DPO
+Based on prior diagnostics, we want to ask two questions:
+1. **DPO instead of GRPO:** is preference learning a better use of the Hard A bucket than GRPO?
+2. **Quality-gating:** if we reinforce only the reasoning-valid correct rollouts (not flukes), does that escape redistribution?
+
+
 
 
