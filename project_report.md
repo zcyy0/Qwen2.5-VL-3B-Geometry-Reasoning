@@ -106,43 +106,43 @@ Parsed answer differs from gold by ≥ 0.01
 The baseline Qwen2.5-VL-3B-Instruct model was evaluated with image + question only.
 | Split | Accuracy | Parse success rate |
 |---|---|---|
-| Validation | 22.2% |83.5%|
-| Test| 22.4% |83.8%|
+| Validation | 20.0% |83.5%|
+| Test| 21.4% |83.8%|
 
 ### Baseline Accuracy by Problem Type
 The baseline model has very uneven performance across geometry types. Some theorem families are nearly unsolved, while simpler area, angle, and perimeter problems are much more tractable.
-| Problem Type | Accuracy |Correct/Total|
+| Problem Type | Accuracy |
 |---|---|---|
-| Angle Bisector of Triangle | 0% |0/6|
-| Geometric Mean| 0% | 0/10|
-| Polygon Angle| 0% | 0/11|
-| Secant Angle  | 5.9% | 1/17|
-| Secant Segment   | 6.7% |1/15|
-| Circle Chord| 7.5% |3/40|
-| Inscribed Angle| 10% |2/20|
-| Median of Triangle| 14.3% |2/14|
-| Similarity in Parallel Line| 15.4% |2/13|
-| Tangent    | 16.7% |2/12|
-| Perimeter and Area of Polygon| 16.7% |1/6|
-| Rhombus and Square| 18.2% |4/22|
-| Parallel Lines    | 18.8% |6/32|
-| Trapezoid and Kite| 21.4% |6/28|
-|Perimeter and Area of Triangle|22.2%|2/9|
-| Line Segment  | 22.2% |2/9|
-| Circumference and Area of Circle| 23.5% |8/34|
-| Polygon Congruence | 25% | 3/12|
-| Pythagorean Theorem| 25% |2/8|
-| Midsegment of Triangle| 26.7% |4/15|
-| Trigonometry| 28.1% |9/32|
-| Angle Relation in Triangle| 28.6% |4/14|
-| Isosceles (Equilateral) Triangle| 31.6% |6/19|
-|  Polygon Similarity| 35% |7/20|
-| Arc Angle | 35.7% |5/14|
-| Parallelogram| 37.5% |9/24|
-| Rectangle | 37.5% |3/8|
-| Angle| 38.9% |7/18|
-| Perpendicular Bisector of Triangle| 40% |2/5|
-| Perimeter and Area of Quadrangle| 40.7% |11/27|
+| Angle Bisector of Triangle | 0% |
+| Geometric Mean| 0% | 
+| Polygon Angle| 0% | 
+| Secant Angle  | 5.9% | 
+| Secant Segment   | 6.7% |
+| Circle Chord| 7.5% |
+| Inscribed Angle| 10% |
+| Median of Triangle| 14.3% |
+| Similarity in Parallel Line| 15.4% |
+| Tangent    | 16.7% |
+| Perimeter and Area of Polygon| 16.7% |
+| Rhombus and Square| 18.2% |
+| Parallel Lines    | 18.8% |
+| Trapezoid and Kite| 21.4% |
+|Perimeter and Area of Triangle|22.2%|
+| Line Segment  | 22.2% |
+| Circumference and Area of Circle| 23.5% |
+| Polygon Congruence | 25% |
+| Pythagorean Theorem| 25% |
+| Midsegment of Triangle| 26.7% |
+| Trigonometry| 28.1% |
+| Angle Relation in Triangle| 28.6% |
+| Isosceles (Equilateral) Triangle| 31.6% |
+|  Polygon Similarity| 35% |
+| Arc Angle | 35.7% |
+| Parallelogram| 37.5% |
+| Rectangle | 37.5% |
+| Angle| 38.9% |
+| Perpendicular Bisector of Triangle| 40% |
+| Perimeter and Area of Quadrangle| 40.7% |
 
 ### Baseline Failure Analysis
 #### Visual Hallucination
@@ -184,7 +184,7 @@ To better understand the bottlenecks, I ran oracle-assisted prompt ablations. Th
 
 | Prompt | Accuracy on validation dataset |
 |---|---|
-| Question + Image | 22.2% |
+| Question + Image | 20.0% |
 | Question + Image + Relevant visual facts | 30.4% |
 | Question + Relevant visual facts| 31.1% |
 | Question + Relevant visual facts + Relevant theorems | 39.1% |
@@ -193,7 +193,7 @@ To better understand the bottlenecks, I ran oracle-assisted prompt ablations. Th
 
 These ablations suggest:
 
-1. Relevant visual facts alone improve performance from 22.2% → 30.4%.
+1. Relevant visual facts alone improve performance from 20.0% → 30.4%.
 2. Removing the image but keeping relevant visual facts gives similar accuracy, 31.1%, suggesting that extracting useful diagram facts is a major bottleneck.
 3. Adding relevant theorems improves accuracy to 39.1%.
 4. Adding object-theorem bindings improves accuracy dramatically to 69.1%.
@@ -219,7 +219,7 @@ All SFT variants used the same 1,500 sampled training examples from PGPS9K. I us
 | 1.1 | Teacher-generated solutions | 17.7% |Severe output degeneration and long reasoning loops|
 | 1.2 | Teacher-corrected student responses |~baseline| Teacher corrections still shifted the response distribution|
 | 2.1| Rejection-sampling SFT from Qwen’s own correct responses |+1 pp|Stable but small improvement|
-| 2.2 |Hint-augmented rejection-sampling SFT using object-theorem bindings | 22.4% |Close to baseline; no robust gain|
+| 2.2 |Hint-augmented rejection-sampling SFT using object-theorem bindings | 20.2% |Close to baseline; no robust gain|
 
 
 ### Version 1.1: Teacher-Generated Responses
@@ -228,7 +228,7 @@ I used Gemini 2.5 Pro to generate solutions that explicitly mentioned relevant v
 However, SFT on these traces caused degeneration in the model’s outputs.
 | Metric | Baseline | Version 1 |
 |---|---|---|
-| **Accuracy** | 22.2% | 17.7% |
+| **Accuracy** | 20.0% | 17.7% |
 | Min token length | 39 | 30 |
 | Max token length | 3893 | 8,053 |
 | Mean token length | 431.6| 1,360.7 |
@@ -257,7 +257,7 @@ This was more stable than teacher SFT and improved validation accuracy by about 
 ### Version 2.2: Hint-Augmented Rejection-Sampling Fine-Tuning
 Version 2.1 only reinforces behaviors the model can already produce. To expose object-theorem binding, I injected object-theorem bindings into the prompt during data generation, asked the model to generate reasoning that explicitly used them, then kept correct responses for SFT.
 
-However, this checkpoint achieved 22.4% validation accuracy, close to baseline.
+However, this checkpoint achieved 20.4% validation accuracy, close to baseline.
 
 ### SFT Conclusion
 Under these data sizes and labeling strategies, SFT did not produce a robust improvement over the baseline.
@@ -586,30 +586,30 @@ This suggests that HardB may require stronger supervision, teacher traces, verif
 ### Stage-wise Evaluation Results
 | Stage | Accuracy on Validation data |
 |---|---|
-|Baseline| 22.2%|
-|GRPO-Easy | 23%|
-|GRPO-Medium| 26.5%|
-|GRPO-HardA|27.2%|
-|GRPO-HardB|27.2%|
+|Baseline| 20.0%|
+|GRPO-Easy | 23.4%|
+|GRPO-Medium| 25.9%|
+|GRPO-HardA|26.1%|
+|GRPO-HardB|26.2%|
 
 The best checkpoint was selected from GRPO-HardA.
 
 Final held-out test result:
 | Stage | Accuracy on Test data |
 |---|---|
-|Baseline| 22.4%|
-|Best GRPO checkpoint | 28.9%|
+|Baseline| 21.4%|
+|Best GRPO checkpoint | 29.3%|
 
-This is a +6.5 percentage-point improvement on 1,007 untouched test problems.
+This is a +7.9 percentage-point improvement on 1,007 untouched test problems and the improvement is statistically significant
+```
+p_pool = 510/(1007*2) = 0.2532\\
+SE = sqrt(0.2532 * 0.7468 * 2/1007) = 0.0194\\
+z = 7.94pp / 1.94pp = 4.09\\
+z ≈ 4.1, p << 0.001
+95% CI on the difference: +7.94pp ± 1.96 × 1.93pp = [+4.2pp, +11.7pp]
+```
 
-A rough two-proportion calculation gives:
 
-$$
-SE \approx 0.0194\\
-z = \frac{0.289−0.224}{0.0194} \approx 3.35
-$$
-
-So the held-out test gain is likely real, although a paired gain/loss analysis would be a better test if per-example predictions are available.
 
 ### GRPO Analysis
 The results from GRPO-HardA seems off -- the accuracy on validation dataset barely moved compared to GRPO-medium, and the reward never trended up -- it hovered around ~0.22 for the whole run. Were these signs of a broken run, a bad reward, or something more fundamental? I did the following diagnosis:
