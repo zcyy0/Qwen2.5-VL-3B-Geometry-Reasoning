@@ -667,7 +667,7 @@ examples make it concrete (it was validated to flag logic errors while forgiving
 #### What the findings suggest
 The diagnosis reframes the goal from "tune RL harder" to "fix the training signal so it rewards reasoning, not just answers," plus harvest capability the model already has. The natural next step is either process-reward or quality-gated preference learning (DPO) to teach the model to use sound reasoning. I chose to do DPO as the next step because it has lower cost.
 
-## DPO
+## 6.DPO
 Based on prior diagnostics, we want to ask two questions:
 1. **DPO instead of GRPO:** is preference learning a better use of the Hard A bucket than GRPO?
 2. **Quality-gating:** if we reinforce only the reasoning-valid correct rollouts (not flukes), does that escape redistribution?
