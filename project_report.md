@@ -646,29 +646,18 @@ Paired transitions across the 500 problems:
 
 ~100 of 500 problems flipped solvable-status — for a net of −7. That is the signature of redistribution: heavy churn, no net addition.
 
-#### Finding 3: "Correct" ≠ "reasoned correctly": the fluke audit
-If RL is reinforcing correct answers but not gaining capability, *what is it reinforcing?*
-Hypothesis: on hard problems, the rare correct answers are **flukes** — right number,
-broken reasoning — so RL reinforces noise. To test it I had a strong LLM judge (Opus 4.8,
-with the diagram, question, gold answer, and the model's chain) grade **only the reasoning**
-of correct rollouts, stratified by how reliably the model solves each problem.
+#### Finding 3: Fluke rollouts
+If RL is reinforcing correct answers but not gaining capability, *what is it reinforcing?* Hypothesis: on hard problems, the rare correct answers are flukes — right number, broken reasoning — so RL reinforces noise. To test it I had a strong LLM judge (Opus 4.8,
+with the diagram, question, gold answer, and the model's chain) grade only the reasoning of correct rollouts, stratified by how reliably the model solves each problem.
 
 | stratum (correct out of 16) | n | valid reasoning | fluke | **fluke rate** |
 |---|---|---|---|---|
-| lucky (1–3) | 56 | 26 | 30 | **53.6%** |
-| mid (4–11) | 50 | 21 | 29 | **58.0%** |
-| reliable (12–16) | 48 | 19 | 29 | **60.4%** |
+| lucky (1–3) | 56 | 26 | 30 | 53.6% |
+| mid (4–11) | 50 | 21 | 29 | 58.0% |
+| reliable (12–16) | 48 | 19 | 29 | 60.4%|
 
-**The original hypothesis was refuted** — fluke rate is *flat* (~54–60%, statistically
-indistinguishable at n≈50), not concentrated in the rare-correct cases. But the refutation
-surfaced something more important:
-
-> **~57% of *all* correct answers on these problems are reached by unsound reasoning —
-> even on problems the model solves 12–16 times out of 16.** Reliability ≠ understanding.
-
-The model reliably reaches right answers via **stable wrong shortcuts**. The judge's own
-examples make it concrete (it was validated to flag logic errors while forgiving cosmetic
-mislabels; mean confidence 0.87 valid / 0.79 fluke):
+Fluke rate is *flat* (~54–60%, statistically indistinguishable at n≈50), not concentrated in the rare-correct cases. But this surfaced something more important: *57% of *all* correct answers on these problems are reached by unsound reasoning even on problems the model solves 12–16 times out of 16. Reliability ≠ understanding. The model reliably reaches right answers via **stable wrong shortcuts**. The judge's own
+examples make it concrete (it was validated to flag logic errors while forgiving cosmetic mislabels; mean confidence 0.87 valid / 0.79 fluke):
 
 - *"applies 180−inscribed instead of 2×inscribed, getting 120° only because 2×60 = 180−60 =
   120 by coincidence"*
