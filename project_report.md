@@ -602,14 +602,12 @@ Final held-out test result:
 
 This is a +7.9 percentage-point improvement on 1,007 untouched test problems and the improvement is statistically significant
 ```
-p_pool = 510/(1007*2) = 0.2532\\
-SE = sqrt(0.2532 * 0.7468 * 2/1007) = 0.0194\\
-z = 7.94pp / 1.94pp = 4.09\\
+p_pool = 510/(1007*2) = 0.2532
+SE = sqrt(0.2532 * 0.7468 * 2/1007) = 0.0194
+z = 7.94pp / 1.94pp = 4.09
 z ≈ 4.1, p << 0.001
 95% CI on the difference: +7.94pp ± 1.96 × 1.93pp = [+4.2pp, +11.7pp]
 ```
-
-
 
 ### GRPO Analysis
 The results from GRPO-HardA seems off -- the accuracy on validation dataset barely moved compared to GRPO-medium, and the reward never trended up -- it hovered around ~0.22 for the whole run. Were these signs of a broken run, a bad reward, or something more fundamental? I did the following diagnosis:
