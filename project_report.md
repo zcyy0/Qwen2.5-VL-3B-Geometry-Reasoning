@@ -665,16 +665,14 @@ examples make it concrete (it was validated to flag logic errors while forgiving
   are false… the answer is right by coincidence of flawed reasoning."*
 
 #### What the findings suggest
-The diagnosis reframes the goal from "tune RL harder" to "fix the training signal so it rewards reasoning, not just answers," plus harvest capability the model already has. The natural next step is either process-reward or quality-gated preference learning (DPO) to teach the model to use sound reasoning. I chose to do DPO as the next step because it's cheaper.
-
-However, there is a hard ceiling: ~20% of the bucket (326/1,586 problems) is wrong on all 16 samples — zero gradient, unreachable by RL at any temperature. Genuinely new capability would need a larger model, tools (a solver), or distillation from a stronger teacher.
+The diagnosis reframes the goal from "tune RL harder" to "fix the training signal so it rewards reasoning, not just answers," plus harvest capability the model already has. The natural next step is either process-reward or quality-gated preference learning (DPO) to teach the model to use sound reasoning. I chose to do DPO as the next step because it has lower cost.
 
 ## DPO
 Based on prior diagnostics, we want to ask two questions:
 1. **DPO instead of GRPO:** is preference learning a better use of the Hard A bucket than GRPO?
 2. **Quality-gating:** if we reinforce only the reasoning-valid correct rollouts (not flukes), does that escape redistribution?
 
-The experiment uses GRPO-medium checkpoint to generate 16 rollouts on all 1586 Hard A problems (temp 0.6, seed 42). Then use Claude Opus-4.8 as LLM judge to grade every clean rollout (capped at 6 response per problem) as valid** (sound derivation), fluke (right number, unsound chain) or unclear. The valid rate is 43.5%, fluke rate 56.2%.
+The experiment uses GRPO-medium checkpoint to generate 16 rollouts on all 1586 Hard A problems. Then use Claude Opus-4.8 as LLM judge to grade every clean rollout (capped at 6 response per problem) as valid (sound derivation), fluke (right number, unsound chain) or unclear. The valid rate is 43.5%, and fluke rate 56.2%.
 
 We want to construct two versions of preference pairs:
 - Vanilla DPO: rollout with correct answer vs. rollout with incorrect answer. 
@@ -685,10 +683,10 @@ We want to construct two versions of preference pairs:
 1586   all 3A problems
  −297   no clean strict-format CORRECT rollout (296 are 0/16 "dead residue")
  ─────
- 1289   ≥1 clean strict-format correct rollout      ← VANILLA pool
+ 1289   ≥1 clean strict-format correct rollout      
  −559   "all-fluke": correct rollouts exist but EVERY judged one is unsound
  ─────
-  730   ≥1 reasoning-VALID correct rollout           ← GATED pool
+  730   ≥1 reasoning-VALID correct rollout          
 ```
 The 559-problem gap is the substantive cost of gating: there is no valid `chosen` to learn from, so gated DPO drops them. 
 
@@ -701,4 +699,4 @@ Both vanilla DPO and gated used the same training schedule: LoRA r=32/α=64 (LM 
 | vanilla DPO | 26.65% | +0.78 [−2.1,+3.7] | 29.00% | −0.10 [−2.2,+2.0] |
 | gated DPO | 25.29% | −0.58 [−2.9,+1.8] | 29.29% | +0.20 [−1.6,+1.9] |
 
-So neither vanilla DPO or gated DPO produces significant results. 
+So neither vanilla DPO or gated DPO produces significant results. This is likely because the model cannot learn the subtleties between valid reasoning and fluke reasoning, or the quality-gated DPO suppresses correct answer behavior by penalizing correct answer fluke reasoning rollouts. 
