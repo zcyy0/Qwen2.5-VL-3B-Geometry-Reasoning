@@ -112,7 +112,7 @@ The baseline Qwen2.5-VL-3B-Instruct model was evaluated with image + question on
 ### Baseline Accuracy by Problem Type
 The baseline model has very uneven performance across geometry types. Some theorem families are nearly unsolved, while simpler area, angle, and perimeter problems are much more tractable.
 | Problem Type | Accuracy |
-|---|---|---|
+|---|---|
 | Angle Bisector of Triangle | 0% |
 | Geometric Mean| 0% | 
 | Polygon Angle| 0% | 
