@@ -590,7 +590,7 @@ This suggests that HardB may require stronger supervision, teacher traces, verif
 |GRPO-Easy | 23.4%|
 |GRPO-Medium| 25.9%|
 |GRPO-HardA|26.1%|
-|GRPO-HardB|26.2%|
+|GRPO-HardB|26.0%|
 
 The best checkpoint was selected from GRPO-HardA.
 
