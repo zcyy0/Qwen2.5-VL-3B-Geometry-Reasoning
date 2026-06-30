@@ -616,21 +616,21 @@ The results from GRPO-HardA seems off -- the accuracy on validation dataset bare
 |---|---|---|---|
 | A | Training-curve audit | Is the run learning, or just moving? | log (reward, KL, entropy, accuracy, length) |
 | B | Per-prompt success-rate histogram, before vs after | Did the *set* of solvable problems grow or churn? | K=16 rollouts under GRPO-medium checkpoint and GRPO-hardA checkpoint, 500 problems |
-| C | Reasoning-validity ("fluke") audit | Are "correct" answers actually reasoned correctly? | LLM judge (Opus 4.8) on 154 correct rollouts |
+| C | Reasoning-validity ("fluke") audit | Are "correct" answers actually reasoned correctly? | LLM judge (Opus 4.8) on sampled correct rollouts |
 
 #### Finding 1: The policy moved, but it didn't improve. 
 | metric (start → end) | value | reading |
 |---|---|---|
-| reward | 0.211 → 0.225 (peak 0.319) | **flat / noisy** |
-| training accuracy (sampled) | ~16% → ~21%, mean 20.8%, noisy 13–27% | **flat at training temperature** |
-| KL divergence from init | 0.003 → 0.013 (4×) | **policy genuinely moved** |
+| reward | 0.211 → 0.225 (peak 0.319) | flat / noisy |
+| gen_prompt_correct | ~16% → ~21%, mean 20.8%, noisy 13–27% | flat at training temperature |
+| KL divergence from init | 0.003 → 0.013 (4×) | policy genuinely moved |
 | entropy | 0.385 → 0.345 | mild collapse |
 | completion length | 251 → 222 tokens | no verbosity blow-up |
 
-The tell-tale combination: **KL grew 4× (the weights changed meaningfully) while neither reward nor even *sampled* training accuracy improved.** So this isn't "trained at sampling temperature but failed to transfer to greedy decoding" — there was little sampled-temp gain to transfer in the first place. The optimizer moved the policy without making it better.
+KL grew 4× (the weights changed meaningfully) while neither reward nor even gen_prompt_correct improved. So the training moved the policy without making it better.
 
 #### Finding 2: Redistribution visualized
-For 500 problems I estimated each problem's per-sample success probability `p` (fraction of 16 samples correct) under the model GRPO-medium checkpoint (before) and GRPO-HardA checkpoint (after), and compared the distributions.
+I sampled 500 problems from Hard A bucket and estimated each problem's per-sample success probability `p` (fraction of 16 samples correct) under the model GRPO-medium checkpoint (before) and GRPO-HardA checkpoint (after), and compared the distributions.
 
 ```
            meanP(pass@1)   pass@16    "dead" (p=0)
@@ -638,16 +638,13 @@ For 500 problems I estimated each problem's per-sample success probability `p` (
   after    0.243         0.808      96  (19.2%)
 ```
 
-**Paired transitions across the 500 problems:**
+Paired transitions across the 500 problems:
 
 | newly solvable (0→>0) | lost (>0→0) | net solvable-set change | p increased | p decreased |
 |---|---|---|---|---|
-| **46** | **53** | **−7** | 233 | 159 |
+| 46 | 53 | −7| 233 | 159 |
 
-~100 of 500 problems flipped solvable-status — for a **net of −7**. That is the signature
-of **redistribution**: heavy churn, no net addition. (Both distributions are also bimodal:
-a large spike of near-unsolvable problems plus a thin tail — a **~20% "dead residue"**
-that's wrong on all 16 samples and therefore produces no learning signal at all.)
+~100 of 500 problems flipped solvable-status — for a net of −7. That is the signature of redistribution: heavy churn, no net addition.
 
 #### Finding 3: "Correct" ≠ "reasoned correctly": the fluke audit
 If RL is reinforcing correct answers but not gaining capability, *what is it reinforcing?*
