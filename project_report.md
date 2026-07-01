@@ -599,14 +599,18 @@ Final held-out test result:
 |Baseline| 21.4%|
 |Best GRPO checkpoint | 29.3%|
 
-This is a +7.9 percentage-point improvement on 1,007 untouched test problems and the improvement is statistically significant
-```
-p_pool = 510/(1007*2) = 0.2532
-SE = sqrt(0.2532 * 0.7468 * 2/1007) = 0.0194
-z = 7.94pp / 1.94pp = 4.09
-z ≈ 4.1, p << 0.001
-95% CI on the difference: +7.94pp ± 1.96 × 1.93pp = [+4.2pp, +11.7pp]
-```
+This is a +7.9 percentage-point improvement on 1,007 untouched test problems and the improvement is statistically significant. 
+
+McNemar's Test:
+|  | GRPO-medium Correct | GRPO-medium Wrong
+|---|---|---|
+|Baseline Correct| 153| 62|
+|Baseline Wrong| 142| 62|
+
+- χ²(1) with continuity correction = 30.59, p ≈ 3.2 × 10⁻⁸
+- Exact binomial (two-sided) = 2.1 × 10⁻⁸
+
+The baseline and GRPO-medium difference is highly significant (p ≈ 2×10⁻⁸). So the end-to-end GRPO effect is real and not noise
 
 ### GRPO Analysis
 The results from GRPO-HardA seems off -- the accuracy on validation dataset barely moved compared to GRPO-medium, and the reward never trended up -- it hovered around ~0.22 for the whole run. Were these signs of a broken run, a bad reward, or something more fundamental? I did the following diagnosis:
