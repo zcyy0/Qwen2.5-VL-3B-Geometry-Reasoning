@@ -227,7 +227,7 @@ All SFT variants used the same 1,500 sampled training examples from PGPS9K. I us
 I used Gemini 2.5 Pro to generate solutions that explicitly mentioned relevant visual facts and theorems. These responses were too verbose, so I asked Claude Sonnet to rewrite them more concisely while preserving key reasoning steps.
 
 However, SFT on these traces caused degeneration in the model’s outputs.
-| Metric | Baseline | Version 1 |
+| Metric | Baseline | Version 1.1 |
 |---|---|---|
 | **Accuracy** | 20.0% | 17.1% |
 | Min token length | 39 | 30 |
@@ -237,7 +237,7 @@ However, SFT on these traces caused degeneration in the model’s outputs.
 |P90|523|7,905  |
 |p99|3,823 | 8,013 |
 
-The model began producing long degenerative reasoning loops. A likely cause is response-distribution shift: the teacher traces were stylistically and structurally different from the native Qwen2.5-VL response distribution.
+The model began producing bimodal degeneration. A likely cause is response-distribution shift: the teacher traces were stylistically and structurally different from the native Qwen2.5-VL response distribution.
 
 ### Version 1.2: Teacher-Corrected Student Responses
 To reduce response-distribution shift, I asked Qwen to generate responses first, then asked Claude Sonnet to correct the reasoning.
