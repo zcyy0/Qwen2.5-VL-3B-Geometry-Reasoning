@@ -188,8 +188,8 @@ To better understand the bottlenecks, I ran oracle-assisted prompt ablations. Th
 | Question + Image + Relevant visual facts | 30.4% |
 | Question + Relevant visual facts| 31.1% |
 | Question + Relevant visual facts + Relevant theorems | 39.1% |
-| Question + Relevant visual facts + Relevant theorems + Object-theoream Bindings | 69.1% |
-| Question + + Relevant theorems + Object-theoream Bindings | 50% |
+| Question + Relevant visual facts + Relevant theorems + Object-theorem Bindings | 69.1% |
+| Question + Relevant theorems + Object-theorem Bindings | 50% |
 
 These ablations suggest:
 
