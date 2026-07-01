@@ -8,6 +8,7 @@ I built a full training and evaluation pipeline using:
 - vLLM for high-throughput rollout generation
 - A symbolic answer parser for robust comparison between model outputs and numeric ground-truth answers
 - A curriculum-based GRPO setup that separates problems by rollout difficulty
+- A DPO experiment as a comparison to GRPO
 
 The baseline Qwen2.5-VL-3B-Instruct model achieved:
 | Split | Accuracy | Parse success rate |
@@ -15,7 +16,7 @@ The baseline Qwen2.5-VL-3B-Instruct model achieved:
 | Validation | 20.0% |83.5%|
 | Test| 21.4% |83.8%|
 
-The final pipeline improved Qwen2.5-VL-3B-Instruct from 21.4% to 29.3% accuracy on the 1,007-problem CASIA-PGPS9K held-out test set, a +7.9 percentage-point gain corresponding to roughly 80 additional solved problems. 
+The experiments below moved the test number from 21.4% to 29.3% accuracy on the 1,007-problem CASIA-PGPS9K held-out test set, a +7.9 percentage-point gain corresponding to roughly 80 additional solved problems. the significant gain comes from Easy+Medium GRPO; hard-bucket stages and DPO did not move the test number.
 
 The main finding is that the model’s largest bottleneck is object-theorem binding, not merely theorem recall. Oracle ablations showed that providing object-theorem bindings produced the largest accuracy jump. GRPO was effective on easy and medium curriculum buckets, but on harder buckets GRPO mostly results in redistribution rather than improving problem solving capability. DPO has similar performance as GRPO on the harder problems.
 
@@ -216,10 +217,10 @@ All SFT variants used the same 1,500 sampled training examples from PGPS9K. I us
 ### Summary of SFT Variants
 | Version | Method |Validation Accuracy| Main Observation|
 |---|---|---|---|
-| 1.1 | Teacher-generated solutions | 17.7% |Severe output degeneration and long reasoning loops|
+| 1.1 | Teacher-generated solutions | -3pp |Severe output degeneration and long reasoning loops|
 | 1.2 | Teacher-corrected student responses |~baseline| Teacher corrections still shifted the response distribution|
 | 2.1| Rejection-sampling SFT from Qwen’s own correct responses |+1 pp|Stable but small improvement|
-| 2.2 |Hint-augmented rejection-sampling SFT using object-theorem bindings | 20.2% |Close to baseline; no robust gain|
+| 2.2 |Hint-augmented rejection-sampling SFT using object-theorem bindings | ~baseline |Close to baseline; no robust gain|
 
 
 ### Version 1.1: Teacher-Generated Responses
@@ -228,7 +229,7 @@ I used Gemini 2.5 Pro to generate solutions that explicitly mentioned relevant v
 However, SFT on these traces caused degeneration in the model’s outputs.
 | Metric | Baseline | Version 1 |
 |---|---|---|
-| **Accuracy** | 20.0% | 17.7% |
+| **Accuracy** | 20.0% | 17.1% |
 | Min token length | 39 | 30 |
 | Max token length | 3893 | 8,053 |
 | Mean token length | 431.6| 1,360.7 |
@@ -655,12 +656,14 @@ with the diagram, question, gold answer, and the model's chain) grade only the r
 | reliable (12–16) | 48 | 19 | 29 | 60.4%|
 
 Fluke rate is *flat* (~54–60%, statistically indistinguishable at n≈50), not concentrated in the rare-correct cases. But this surfaced something more important: *57% of *all* correct answers on these problems are reached by unsound reasoning even on problems the model solves 12–16 times out of 16. Reliability ≠ understanding. The model reliably reaches right answers via **stable wrong shortcuts**. The judge's own
-examples make it concrete (it was validated to flag logic errors while forgiving cosmetic mislabels; mean confidence 0.87 valid / 0.79 fluke):
+examples make it concrete (mean confidence 0.87 valid / 0.79 fluke):
 
 - *"applies 180−inscribed instead of 2×inscribed, getting 120° only because 2×60 = 180−60 =
   120 by coincidence"*
 - *(on a 13/16-reliable problem)* *"claims angle1 = angle3 as opposite angles, but these
   are false… the answer is right by coincidence of flawed reasoning."*
+
+I also sampled 10 problems and manually read the reasoning rollouts myself and confirmed that judge's reliability. 
 
 #### What the findings suggest
 The diagnosis reframes the goal from "tune RL harder" to "fix the training signal so it rewards reasoning, not just answers," plus harvest capability the model already has. The natural next step is either process-reward or quality-gated preference learning (DPO) to teach the model to use sound reasoning. I chose to do DPO as the next step because it has lower cost.
@@ -679,7 +682,7 @@ We want to construct two versions of preference pairs:
 ### Preference pair construction: 
 ```
 1586   all 3A problems
- −297   no clean strict-format CORRECT rollout (296 are 0/16 "dead residue")
+ −297   no correct answer in 16 rollouts
  ─────
  1289   ≥1 clean strict-format correct rollout      
  −559   "all-fluke": correct rollouts exist but EVERY judged one is unsound
