@@ -532,8 +532,6 @@ In GRPO-Medium, gen_prompt_correct stayed between 80% and 90%.
 
 gen_overall_correct increased from roughly 29–33% to 35–40%.
 
-This was the most productive GRPO stage in terms of validation accuracy.
-
 | Reward mean | Reward std |
 | :---: | :---: |
 | ![](./assets/stage_2_mean_reward.png) | ![](./assets/stage_2_reward_std.png) | 
@@ -549,7 +547,7 @@ KL rose early and then stabilized.
 Entropy decreased and then stabilized.
 Loss was noisy and sometimes negative, which is normal for GRPO.
 ```
-Validation accuracy improved from approximately 23.0% to 26.5%. On 514 validation examples, this is promising but not statistically conclusive by itself. The rough 95% confidence interval for the improvement includes zero.
+Validation accuracy improved from approximately 23.4% to 25.9%. On 514 validation examples, this is promising but not statistically conclusive by itself. The rough 95% confidence interval for the improvement includes zero.
 
 #### GRPO-HardA Results
 HardA contains problems where the model had zero correct rollouts under k=4 mining, but at least one correct rollout under k=8 mining.
