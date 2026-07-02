@@ -16,7 +16,7 @@ The baseline Qwen2.5-VL-3B-Instruct model achieved:
 | Validation | 20.0% |83.5%|
 | Test| 21.4% |83.8%|
 
-The experiments below moved the test number from 21.4% to 29.3% accuracy on the 1,007-problem CASIA-PGPS9K held-out test set, a +7.9 percentage-point gain corresponding to roughly 80 additional solved problems. the significant gain comes from Easy+Medium GRPO; hard-bucket stages and DPO did not move the test number.
+The experiments below moved the test number from 21.4% to 29.3% accuracy on the 1,007-problem CASIA-PGPS9K held-out test set, a +7.9 percentage-point gain corresponding to roughly 80 additional solved problems. HardA was nominally best on validation, but its gain over GRPO-medium is within noise; the substantive gain came from Easy+Medium
 
 The main finding is that the model’s largest bottleneck is object-theorem binding, not merely theorem recall. Oracle ablations showed that providing object-theorem bindings produced the largest accuracy jump. GRPO was effective on easy and medium curriculum buckets, but on harder buckets GRPO mostly results in redistribution rather than improving problem solving capability. DPO has similar performance as GRPO on the harder problems.
 
@@ -591,7 +591,7 @@ This suggests that HardB may require stronger supervision, teacher traces, verif
 |GRPO-HardA|26.1%|
 |GRPO-HardB|26.0%|
 
-The best checkpoint was selected from GRPO-HardA.
+The 0.19pp validation difference between HardA and Medium is with a CI of [−2.9, +3.5], so the selection between the two was effectively arbitrary given the CI.
 
 Final held-out test result:
 | Stage | Accuracy on Test data |
@@ -602,7 +602,7 @@ Final held-out test result:
 This is a +7.9 percentage-point improvement on 1,007 untouched test problems and the improvement is statistically significant. 
 
 McNemar's Test:
-|  | GRPO-medium Correct | GRPO-medium Wrong
+|  | GRPO-hardA Correct | GRPO-hardA Wrong
 |---|---|---|
 |Baseline Correct| 153| 62|
 |Baseline Wrong| 142| 62|
@@ -610,7 +610,7 @@ McNemar's Test:
 - χ²(1) with continuity correction = 30.59, p ≈ 3.2 × 10⁻⁸
 - Exact binomial (two-sided) = 2.1 × 10⁻⁸
 
-The baseline and GRPO-medium difference is highly significant (p ≈ 2×10⁻⁸). So the end-to-end GRPO effect is real and not noise
+The baseline and GRPO-hardA difference is highly significant (p ≈ 2×10⁻⁸). So the end-to-end GRPO effect is real and not noise
 
 ### GRPO Analysis
 The results from GRPO-HardA seems off -- the accuracy on validation dataset barely moved compared to GRPO-medium, and the reward never trended up -- it hovered around ~0.22 for the whole run. Were these signs of a broken run, a bad reward, or something more fundamental? I did the following diagnosis:
@@ -675,11 +675,11 @@ The diagnosis reframes the goal from "tune RL harder" to "fix the training signa
 ## 6.DPO
 Based on prior diagnostics, we want to ask two questions:
 1. **DPO instead of GRPO:** is preference learning a better use of the Hard A bucket than GRPO?
-2. **Quality-gating:** if we reinforce only the reasoning-valid correct rollouts (not flukes), does that escape redistribution?
+2. **Quality-gating:** if reinforce only the reasoning-valid correct rollouts (not flukes), does that escape redistribution?
 
-The experiment uses GRPO-medium checkpoint to generate 16 rollouts on all 1586 Hard A problems. Then use Claude Opus-4.8 as LLM judge to grade every clean rollout (capped at 6 response per problem) as valid (sound derivation), fluke (right number, unsound chain) or unclear. The valid rate is 43.5%, and fluke rate 56.2%.
+The experiment uses GRPO-medium checkpoint to generate 16 rollouts on all 1586 Hard A problems. Then use Claude Opus-4.8 as LLM judge to grade every clean rollout (capped at 6 response per problem) as valid (sound derivation), fluke (right number, unsound chain) or unclear. The valid rate is 43.5%, fluke rate 56.2%, and unclear rate 0.3%. 
 
-We want to construct two versions of preference pairs:
+I want to construct two versions of preference pairs:
 - Vanilla DPO: rollout with correct answer vs. rollout with incorrect answer. 
 - Quality-gated DPO: rollout with correct answer and correct reasoning vs. rollout with correct answer but unsound reasoning
 
@@ -697,17 +697,17 @@ The 559-problem gap is the substantive cost of gating: there is no valid `chosen
 
 ### Experiment results
 Both vanilla DPO and gated used the same training schedule: LoRA r=32/α=64 (LM + vision-MLP + merger); LR = 2e-6, 3 epochs, β= 0.1. 
-| Model | Val | Δ vs GRPO-medium val (CI95) | Test | Δ vs GRPO-medium test (CI95) |
+| Model | Val | Δ vs GRPO-medium val (CI95) | 
 |---|---|---|---|---|
-| GRPO-medium | 25.88% | — | 29.10% | — |
-| GRPO-hard A | 26.07% | +0.19 [−2.9,+3.5] | 29.29% | +0.20 [−2.2,+2.6] |
-| vanilla DPO | 26.65% | +0.78 [−2.1,+3.7] | 29.00% | −0.10 [−2.2,+2.0] |
-| gated DPO | 25.29% | −0.58 [−2.9,+1.8] | 29.29% | +0.20 [−1.6,+1.9] |
+| GRPO-medium | 25.88% | — | 
+| GRPO-hard A | 26.07% | +0.19 [−2.9,+3.5] |
+| vanilla DPO | 26.65% | +0.78 [−2.1,+3.7] | 
+| gated DPO | 25.29% | −0.58 [−2.9,+1.8] |
 
 So neither vanilla DPO or gated DPO produces significant results. This is likely because the model cannot learn the subtleties between valid reasoning and fluke reasoning, or the quality-gated DPO suppresses correct answer behavior by penalizing correct answer fluke reasoning rollouts. 
 
 ## 7. Limitations and Next Steps
-The central negative result is that object-theorem binding — identified via oracle ablations as the dominant bottleneck (a jump from 39.1% to 69.1% when bindings are supplied) — was not moved by any training method attempted here. Hint-augmented SFT, curriculum GRPO, and both DPO variants failed to teach it. The working hypothesis is that binding is largely a capability the 3B base model does not possess, rather than a behavior it possesses but under-uses. This would explain the pattern cleanly: RL reweights existing behaviors, so on hard problems it redistributes probability mass (heavy churn, net ≈0) instead of creating the missing skill; and off-policy supervision — teacher-trace SFT, and a vanilla on-policy-distillation attempt — induces distribution shift and degeneration rather than transferring binding, because the student cannot represent the teacher's reasoning in its own distribution.
+The central negative result is that object-theorem binding — identified via oracle ablations as the dominant bottleneck (a jump from 39.1% to 69.1% when bindings are supplied) — was not moved by any training method attempted here. Hint-augmented SFT, curriculum GRPO, and both DPO variants failed to teach it. The working hypothesis is that binding is largely a capability the 3B base model does not possess, rather than a behavior it possesses but under-uses. This would explain the pattern cleanly: RL reweights existing behaviors, so on hard problems it redistributes probability mass (heavy churn, net ≈0) instead of creating the missing skill; and teacher-trace SFT induces distribution shift and degeneration rather than transferring binding, because the student cannot represent the teacher's reasoning in its own distribution.
 
 The highest-value, lowest-cost next experiment is a capacity probe: rerun the binding oracle ablation and one training method on a 7B and a larger (e.g. 32B) backbone. If larger models acquire binding from the same supervision that failed at 3B, the bottleneck is capacity/scale and the 3B ceiling is real; if they also fail, it is a method problem and worth attacking directly.
 
