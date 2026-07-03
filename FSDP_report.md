@@ -1,15 +1,4 @@
 # Scaling a 7B Vision-Language Model From One GPU to Two With PyTorch FSDP
-
-**How I found and fixed a communication bottleneck when sharding training across two GPUs.**
-
-> Full fine-tuning of Qwen2.5-VL-7B needs roughly 112 GB of training state — more than fits
-> on a single 96 GB GPU. I split the model across two GPUs using PyTorch's FSDP `FULL_SHARD`
-> mode (the "ZeRO-3" sharding strategy), then used `torch.profiler` to figure out why the
-> two-GPU run still wasn't fast. The answer: the GPUs were spending most of each step waiting
-> on data transfers between each other rather than computing. Two targeted fixes closed most
-> of that gap and raised throughput **4.2×** — and a separate control experiment confirms the
-> speedup didn't change what the model actually learns.
-
 | | |
 |---|---|
 | **Stack** | PyTorch 2.9, FSDP1 (`FullyShardedDataParallel`), `torch.profiler`, AdamW, activation checkpointing |
