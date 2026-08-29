@@ -698,7 +698,7 @@ The 559-problem gap is the substantive cost of gating: there is no valid `chosen
 ### Experiment results
 Both vanilla DPO and gated used the same training schedule: LoRA r=32/α=64 (LM + vision-MLP + merger); LR = 2e-6, 3 epochs, β= 0.1. 
 | Model | Val | Δ vs GRPO-medium val (CI95) | 
-|---|---|---|---|---|
+|---|---|---|
 | GRPO-medium | 25.88% | — | 
 | GRPO-hard A | 26.07% | +0.19 [−2.9,+3.5] |
 | vanilla DPO | 26.65% | +0.78 [−2.1,+3.7] | 
