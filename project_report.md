@@ -50,7 +50,6 @@ The test set was held out during prompt engineering, curriculum mining, checkpoi
 I performed several preprocessing steps:
 
 - Converted some original LaTeX-style questions into natural language.
-- Converted PGPS9K structural and semantic clauses into a normalized functional annotation format.
 - Built a symbolic answer parser so the model can output decimals, fractions, radicals, π-expressions, units, or simple equations while still being fairly compared against the numeric ground truth.
 
 
