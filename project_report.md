@@ -457,6 +457,7 @@ The goal is to reinforce correct hard-sample rollouts while encouraging the corr
 
 #### GRPO-HardB Reward
 HardB contains problems where the model produced zero correct rollouts during mining. Sparse final-answer reward gives almost no gradient in this setting, so I used a decoupled reward:
+
 $$
 R= w_{\text{answer}} ​\cdot \text{answer reward} + w_{\text{facts}} \cdot \text{fact coverage} + w_{\text{theorems}} ​\cdot \text{theorem coverage} + w_{\text{loop}}\cdot \text{is loop}
 $$
